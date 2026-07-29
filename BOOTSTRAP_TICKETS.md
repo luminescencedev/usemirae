@@ -29,9 +29,13 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
     parity (`.github/workflows/ci.yml`). The workflow YAML is not parseable
     locally — no approved YAML parser is installed — so its first GitHub run is
     its proof.
+  - CI: run 30496187331 green on `ubuntu-latest` and `windows-latest`
+    (toolchain, rust, frontend)
   - follow-up: MIR-0003 absorbs the check into `cargo xtask bootstrap` and
     deletes `tools/toolchain-check`; MIR-0004 adds the policy, secret-scan and
-    lint jobs; MIR-DEPS-0001 covers the ESLint 10 peer conflict
+    lint jobs; MIR-DEPS-0001 covers the ESLint 10 peer conflict;
+    MIR-TOOLING-0001 moves the GitHub actions off the deprecated Node 20 runtime
+    (`@v5` needs pnpm available before `setup-node`, see the workflow header)
 - [ ] MIR-0003 — Add `xtask`
 - [ ] MIR-0004 — Add repository policy checks
 - [ ] MIR-0005 — Create canonical schema skeleton

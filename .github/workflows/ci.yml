@@ -1,4 +1,4 @@
-# Mirae continuous integration.
+﻿# Mirae continuous integration.
 #
 # Canonical documentation: docs/08-development/810-ci-cd-pipeline.md.
 #
@@ -41,9 +41,9 @@ jobs:
     name: Toolchain pins
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .node-version
 
@@ -65,7 +65,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - run: cargo --version
 
@@ -83,9 +83,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .node-version
 

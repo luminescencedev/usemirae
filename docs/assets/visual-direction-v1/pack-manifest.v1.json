@@ -1,0 +1,291 @@
+{
+  "pack": "Mirae Visual Pack v1 — Obsidian Precision",
+  "created": "2026-07-29",
+  "files": [
+    {
+      "path": "CHANGESET.md",
+      "bytes": 804,
+      "sha256": "9c7082c9e6e05f2424258b11109a709e10caa0e1ad5cee3ab8b05f926048bdee"
+    },
+    {
+      "path": "INSTALL.md",
+      "bytes": 629,
+      "sha256": "f0273b1985a1f330d74b95e9fa0b20d1fd5d6ba4e8943ff48476cafc8c4117cb"
+    },
+    {
+      "path": "README.md",
+      "bytes": 1708,
+      "sha256": "bec0336f6afb6784ac2451de1c357ce1bd6137ff06c083eba126009dd7c50901"
+    },
+    {
+      "path": "SOURCES.md",
+      "bytes": 1234,
+      "sha256": "8df93b82629f9ae7444d17f107aaa3ae44138318247c32ecad6e7519cf3bd63a"
+    },
+    {
+      "path": "brand/mirae-app-icon-dark.png",
+      "bytes": 102812,
+      "sha256": "7e064bc2b1bc23d985ea27e357d35acb2edc4657177013c3e6f9552f6d1d4806"
+    },
+    {
+      "path": "brand/mirae-app-icon-dark.svg",
+      "bytes": 2028,
+      "sha256": "9a93ac6ece6095e8017fbc9822f3fb377010e6becb38f479b2b75b405bdb74db"
+    },
+    {
+      "path": "brand/mirae-logo-horizontal-dark.svg",
+      "bytes": 1836,
+      "sha256": "0dad1f0f4f79832d33b5920f49b6ba112dba23c4a9c383c02bce06780d1a4c61"
+    },
+    {
+      "path": "brand/mirae-mark-transparent.png",
+      "bytes": 35702,
+      "sha256": "5eb2eae8f184538d6d4963fdb7917d4f10af4ad488411c23624ffbec19e60708"
+    },
+    {
+      "path": "brand/mirae-mark.svg",
+      "bytes": 1719,
+      "sha256": "59c194808c6ea866ca898f95ed5691b67b72b0658ab0060d8903559139d4f9e5"
+    },
+    {
+      "path": "docs/09-ui-ux/900-ui-ux-overview.md",
+      "bytes": 1859,
+      "sha256": "a34d0af8766d860d9ae9eb7cdd9c5a956ac3b9aefa9b9bbd53b4990a0c53ac4c"
+    },
+    {
+      "path": "docs/09-ui-ux/901-obsidian-precision-art-direction.md",
+      "bytes": 1493,
+      "sha256": "f98be7658a06fb29b0b8a5314a741db14c3ac8637c76949a0f0335cce3460780"
+    },
+    {
+      "path": "docs/09-ui-ux/902-product-experience-principles.md",
+      "bytes": 1291,
+      "sha256": "35b228ad7f69f76dbe091b2d7c8da6f9864aed50dee30f679b84827e3292b61f"
+    },
+    {
+      "path": "docs/09-ui-ux/903-information-architecture.md",
+      "bytes": 1314,
+      "sha256": "8bf91420d1f2b75c692ebaaf151554a508ce99f95a3e73af6651361552f51726"
+    },
+    {
+      "path": "docs/09-ui-ux/904-desktop-shell-layout.md",
+      "bytes": 1347,
+      "sha256": "8f91eaef78b5253e847f2bcdc9d045ee302de333138510fd992078238215b07a"
+    },
+    {
+      "path": "docs/09-ui-ux/905-design-system-foundations.md",
+      "bytes": 1178,
+      "sha256": "322cba7879ce776fb336460af4547d69b731115d15e436c5e89a4c43105dbb7d"
+    },
+    {
+      "path": "docs/09-ui-ux/906-design-tokens.md",
+      "bytes": 1000,
+      "sha256": "e5a397946a214eadf73bd3b1946c9d4b75f3e03351b7568604abcfb04d0360e3"
+    },
+    {
+      "path": "docs/09-ui-ux/907-color-and-theme.md",
+      "bytes": 1473,
+      "sha256": "78730fb342917f89eaab5f297dbf46bf6b1522410098f6187c09ad1e61c9c790"
+    },
+    {
+      "path": "docs/09-ui-ux/908-typography-and-iconography.md",
+      "bytes": 999,
+      "sha256": "cfb557dd9a2c4a27d9d2e3306d6907fabb71bcf352c06f849527032c671478a3"
+    },
+    {
+      "path": "docs/09-ui-ux/909-density-spacing-and-sizing.md",
+      "bytes": 1013,
+      "sha256": "bacfc2b92922a8a652b92535265a5e4b0581a9974e24cec566250f955750aa71"
+    },
+    {
+      "path": "docs/09-ui-ux/910-component-architecture.md",
+      "bytes": 1107,
+      "sha256": "0cf07d532a4639b9bccc88e614cf0037066a23f6aef8a1df1d4f9625c1f87a12"
+    },
+    {
+      "path": "docs/09-ui-ux/911-ui-library-decisions.md",
+      "bytes": 1675,
+      "sha256": "888e53ea25b8317d3a69690b33482ab6566d4401c5214b234747cda395eeb7b0"
+    },
+    {
+      "path": "docs/09-ui-ux/912-motion-system.md",
+      "bytes": 1356,
+      "sha256": "504157eaee52a446279b9dc366fdcb481388eb6f0d77da8c6d1d285accb1bb28"
+    },
+    {
+      "path": "docs/09-ui-ux/913-interaction-patterns.md",
+      "bytes": 1160,
+      "sha256": "203c23ec3e2638a817bc4f42555d20582fbe43bd8fff6a6c0c400c3f48300afd"
+    },
+    {
+      "path": "docs/09-ui-ux/914-drag-drop-and-reordering.md",
+      "bytes": 920,
+      "sha256": "c5c0cc41e4999487aa360bb573059f15982db7edd54823d8557908ff24717e33"
+    },
+    {
+      "path": "docs/09-ui-ux/915-dockable-panels-and-workspace-persistence.md",
+      "bytes": 980,
+      "sha256": "07c8ee5c4f5b06f0c69287247635b30588498491b6330c486ebcdd7f6023482b"
+    },
+    {
+      "path": "docs/09-ui-ux/916-navigation-command-palette-and-shortcuts.md",
+      "bytes": 1021,
+      "sha256": "c2ae01bcd7c9c41d80f222f8ca4f37ca31db4651a87e2cda1a83efc2f9c0a5b2"
+    },
+    {
+      "path": "docs/09-ui-ux/917-property-inspector.md",
+      "bytes": 1050,
+      "sha256": "2c0962a37ac927f4f1cc949bdc07227b921add8a0a2d8a6344abb9659468859d"
+    },
+    {
+      "path": "docs/09-ui-ux/918-scene-editor-and-canvas.md",
+      "bytes": 953,
+      "sha256": "dd3e35848002aa0d4f004db77b3213ecf7481510eab3c29d0967692c8f8a09ae"
+    },
+    {
+      "path": "docs/09-ui-ux/919-preview-program-and-studio-mode.md",
+      "bytes": 898,
+      "sha256": "36c92e5a3ae929591d0c5e39fbcdbda21636ad2bb0197a7ee1321356d14e3a5a"
+    },
+    {
+      "path": "docs/09-ui-ux/920-audio-mixer-experience.md",
+      "bytes": 954,
+      "sha256": "2b027170e0835177fa464c647123aee131c1715b7fa96dbb91e32bcf591bdc75"
+    },
+    {
+      "path": "docs/09-ui-ux/921-output-live-and-recording-experience.md",
+      "bytes": 953,
+      "sha256": "1634649e8206c8a035338180c1e30ff1c0bc9db941c4037437bd26edd2e2d6e5"
+    },
+    {
+      "path": "docs/09-ui-ux/922-loading-empty-failure-and-recovery-states.md",
+      "bytes": 995,
+      "sha256": "416635d28502e3b5cf4d34f96b06c85cd64b4ce08269535469497899afbc5082"
+    },
+    {
+      "path": "docs/09-ui-ux/923-accessibility-and-reduced-motion.md",
+      "bytes": 1069,
+      "sha256": "36d342971649087038c41c368b5161d9cd493933065fea7288c8313149377e29"
+    },
+    {
+      "path": "docs/09-ui-ux/924-ui-performance-and-virtualization.md",
+      "bytes": 1015,
+      "sha256": "e7a9b929b1bfc61a2e7070e6f792b124f9e35951de34a9c1992f525fa21b7dc8"
+    },
+    {
+      "path": "docs/09-ui-ux/925-ui-testing-and-visual-regression.md",
+      "bytes": 1010,
+      "sha256": "bcca088aee6940da7edd86f9eda11a8386fc888b3cae3d31fbe0f852f754a675"
+    },
+    {
+      "path": "docs/09-ui-ux/926-figma-to-code-workflow.md",
+      "bytes": 1072,
+      "sha256": "0406ca7f92862a2e3861ad124df7661208aaeb59d3bbdf5c9e542b0fb16f80ad"
+    },
+    {
+      "path": "docs/09-ui-ux/927-screen-inventory.md",
+      "bytes": 962,
+      "sha256": "ea92025f515cc46fdf484cee444bcb2129f3c9434aef557b3991edf550675c40"
+    },
+    {
+      "path": "docs/09-ui-ux/928-ui-implementation-backlog.md",
+      "bytes": 1981,
+      "sha256": "53e81435d88738793fff9b22d6265a02229adcc2e15daaa97622ea72e7f630c0"
+    },
+    {
+      "path": "docs/SUMMARY-APPEND.md",
+      "bytes": 2179,
+      "sha256": "9beb89584c9a2feae84f45f575c32608445d977fd8267762ead94b94f1add766"
+    },
+    {
+      "path": "docs/adr/ADR-0061-mirae-owned-design-system-over-base-ui.md",
+      "bytes": 437,
+      "sha256": "9323032f1a3c62ee1e9c3d26bcedd5bf706f22b46d41f19bfa20e8c97db2e62d"
+    },
+    {
+      "path": "docs/adr/ADR-0062-css-variables-as-runtime-design-tokens.md",
+      "bytes": 401,
+      "sha256": "ac46a1c871266c70e4c780fd954beb6d0ef8abbab936df721d14cabd8533c7f8"
+    },
+    {
+      "path": "docs/adr/ADR-0063-motion-for-react-as-motion-layer.md",
+      "bytes": 403,
+      "sha256": "5ccab42a329c1bce8e9f4b255a732639d6aaf0613494d6f9eacdd358916a9ee3"
+    },
+    {
+      "path": "docs/adr/ADR-0064-keyboard-equivalent-drag-and-drop.md",
+      "bytes": 352,
+      "sha256": "9bf62ad6e95c2a38ac61ec24d98050b25a48d7e37ab0448bf71360dc2e15862f"
+    },
+    {
+      "path": "docs/adr/ADR-0065-persistent-dockable-desktop-workspace.md",
+      "bytes": 427,
+      "sha256": "8ad28271031d156850dd9e2e3962ff54cfea26313dac4d8dba59cb3e1e09440c"
+    },
+    {
+      "path": "docs/adr/ADR-0066-engine-state-and-ui-drafts-remain-separate.md",
+      "bytes": 432,
+      "sha256": "c248f725a3827dfcb19e304f5699ff3f18f1af0677deaea416a23897dcdebf0b"
+    },
+    {
+      "path": "presentation/mirae-visual-direction-v1-montage.png",
+      "bytes": 619481,
+      "sha256": "65da202da524cb9898132cbf4d3e80af0cdd826ff205e1b90ab07adbb21a4d80"
+    },
+    {
+      "path": "presentation/mirae-visual-direction-v1.pptx",
+      "bytes": 1814533,
+      "sha256": "b2913847af96d118dbbd89ce8c86e782c7fc3f3d4f5677f4a5c088b2289846ad"
+    },
+    {
+      "path": "previews/audio-mixer.png",
+      "bytes": 85223,
+      "sha256": "1a3cf43281e8182f8f1b459e8eb253db935c899a77765a949a96eedc113944cd"
+    },
+    {
+      "path": "previews/color-system.png",
+      "bytes": 88523,
+      "sha256": "906e7f0ef7efc2687e59f6dda7a84f072928c0677862bf9a5b67081505aad812"
+    },
+    {
+      "path": "previews/command-palette.png",
+      "bytes": 88483,
+      "sha256": "e1cb98968dde53baa71a298e4ec2205d5ec0f65642820043b78cfc633c86ffe0"
+    },
+    {
+      "path": "previews/cover.png",
+      "bytes": 198928,
+      "sha256": "0c1fae4ce32d90ee34fb3a1435ddba5150bd677d7448daa5c751bf5aa5ed9260"
+    },
+    {
+      "path": "previews/edit-workspace.png",
+      "bytes": 192485,
+      "sha256": "9c4d444a376cf2e19032855a5d54272e073c44605a24ce686d7ee9084e59e12e"
+    },
+    {
+      "path": "previews/final-direction.png",
+      "bytes": 206897,
+      "sha256": "8064bf7c4801893648577d9799b11899290964c4b277001b52343dffc4010e52"
+    },
+    {
+      "path": "previews/studio-mode.png",
+      "bytes": 244221,
+      "sha256": "b572c7c1003594310dd020e6700a84b72484d8be7542fa5480e56b0c876714e5"
+    },
+    {
+      "path": "source/build_visual_pack.js",
+      "bytes": 60995,
+      "sha256": "58f034a83d94aa1ce53ac3ecdd7cf892383493270a07a6483c49afa414a1b114"
+    },
+    {
+      "path": "tokens/design-tokens-v1.css",
+      "bytes": 1049,
+      "sha256": "b26c34d47544d5d3fd05c83ce1b9b0978464b60eb7d8686f3daa088e458ae078"
+    },
+    {
+      "path": "tokens/design-tokens-v1.json",
+      "bytes": 2369,
+      "sha256": "9a4fa20ab0c6ad9851b52de6f595013883375e5e6daa06b93a573252c2e6743f"
+    }
+  ]
+}

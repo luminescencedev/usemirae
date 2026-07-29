@@ -1,0 +1,22 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Test output
+playwright-report/
+test-results/
+coverage/
+
+# Local and machine state
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+*.log

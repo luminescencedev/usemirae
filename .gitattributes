@@ -1,0 +1,9 @@
+# Normalize line endings so Windows, macOS, and Linux checkouts stay identical.
+* text=auto eol=lf
+
+# Binary assets must never be normalized.
+*.png binary
+*.pptx binary
+*.ico binary
+*.woff binary
+*.woff2 binary

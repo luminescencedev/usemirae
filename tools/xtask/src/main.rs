@@ -13,6 +13,7 @@ mod docs;
 mod json;
 mod policy;
 mod runner;
+mod schema;
 mod toolchain;
 
 use std::path::{Path, PathBuf};
@@ -37,17 +38,99 @@ fn repository_root() -> PathBuf {
 
 /// Run code generation, or verify that generated output is current.
 ///
-/// No generators are registered yet. Rather than print a success that checked
-/// nothing, this states what it did so a stale-contract failure can never hide
-/// behind an empty registry.
-fn generate(check: bool) -> Result<(), StepError> {
-    let mode = if check { "verify" } else { "run" };
+/// The pipeline follows `805` section 4: discover and validate schemas, reject
+/// duplicate ids, render deterministic outputs, then write them or compare them.
+/// With `check`, any difference fails, which is how CI detects drift.
+fn generate(check: bool, root: &Path) -> Result<(), StepError> {
+    let (schemas, errors) = schema::discover(root);
 
-    println!("No generators are registered, so there is nothing to {mode}.");
+    if !errors.is_empty() {
+        eprintln!("{} schema problem(s):", errors.len());
+        for error in &errors {
+            eprintln!("  - {}: {}", error.path, error.detail);
+        }
+
+        return Err(StepError {
+            command: "cargo xtask generate".to_owned(),
+            reason: format!("found {} invalid schema(s)", errors.len()),
+        });
+    }
+
     println!(
-        "The canonical schema pipeline arrives with MIR-0005 and MIR-0006; \
-         generated output is written to schemas/generated."
+        "Validated {} schema(s) across {} canonical domains.",
+        schemas.len(),
+        schema::DOMAINS.len()
     );
+
+    let mut stale = Vec::new();
+    let mut written = Vec::new();
+
+    for artifact in schema::artifacts(&schemas) {
+        let absolute = root.join(artifact.path);
+        let current = runner::read_file(&absolute);
+
+        if current.as_deref() == Some(artifact.contents.as_str()) {
+            continue;
+        }
+
+        if check {
+            stale.push(artifact.path.to_owned());
+            continue;
+        }
+
+        if let Some(parent) = absolute.parent()
+            && let Err(error) = std::fs::create_dir_all(parent)
+        {
+            return Err(StepError {
+                command: "cargo xtask generate".to_owned(),
+                reason: format!("could not create {}: {error}", parent.display()),
+            });
+        }
+
+        if let Err(error) = std::fs::write(&absolute, &artifact.contents) {
+            return Err(StepError {
+                command: "cargo xtask generate".to_owned(),
+                reason: format!("could not write {}: {error}", absolute.display()),
+            });
+        }
+
+        written.push(artifact.path.to_owned());
+    }
+
+    if check {
+        if stale.is_empty() {
+            println!("Generated output is current.");
+            return Ok(());
+        }
+
+        eprintln!("{} generated file(s) differ from the schemas:", stale.len());
+        for path in &stale {
+            eprintln!("  - {path}");
+        }
+        eprintln!("Run `cargo xtask generate` and commit the result.");
+
+        return Err(StepError {
+            command: "cargo xtask generate --check".to_owned(),
+            reason: format!("{} generated file(s) are stale", stale.len()),
+        });
+    }
+
+    // 805 section 4 point 7: report changed contracts.
+    if written.is_empty() {
+        println!("Generated output was already current; nothing was rewritten.");
+    } else {
+        println!("Wrote {} generated file(s):", written.len());
+        for path in &written {
+            println!("  - {path}");
+        }
+    }
+
+    if schemas.is_empty() {
+        println!(
+            "note: no schemas are defined yet, so the outputs are empty. The gate still \
+             runs, so drift is caught from the first contract onward (MIR-0006)."
+        );
+    }
 
     Ok(())
 }
@@ -207,7 +290,7 @@ fn validate_docs(root: &Path) -> Result<(), StepError> {
 /// Run the baseline validation from `809` section 2, stopping at the first failure.
 fn check(root: &Path) -> Result<(), StepError> {
     enforce_policy(root)?;
-    generate(true)?;
+    generate(true, root)?;
     fmt(true, root)?;
     lint(root)?;
     test(&TestScope::All, root)?;
@@ -254,7 +337,7 @@ fn main() -> ExitCode {
                 })
             }
         }
-        Command::Generate { check } => generate(check),
+        Command::Generate { check } => generate(check, &root),
         Command::Fmt { check } => fmt(check, &root),
         Command::Lint => lint(&root),
         Command::Test { scope } => test(&scope, &root),

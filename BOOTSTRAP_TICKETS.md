@@ -93,7 +93,31 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
     Cargo pin syntax (`=x.y.z` per section 11) is unchecked because no external
     crate exists yet; affected-set detection for `test-affected` is still
     unimplemented and is not part of this ticket's goal
-- [ ] MIR-0005 — Create canonical schema skeleton
+- [x] MIR-0005 — Create canonical schema skeleton
+  - status: done
+  - branch: `main` (trunk-based; no pull request)
+  - directories: `schemas/<domain>/v1/` for all eight canonical domains from doc
+    805 section 2 (`ipc`, `project`, `bundle`, `diagnostics`, `sdk`,
+    `extension-manifest`, `extension-ui`, `compatibility`), plus
+    `schemas/generated/{rust,typescript}/`
+  - pipeline: `cargo xtask generate [--check]` discovers schemas, validates
+    required fields, requires each `$id` to match the directory holding it,
+    rejects duplicate ids, renders output sorted by id, then writes or verifies
+    it. Rendering is pure, so determinism is unit tested.
+  - validation: `cargo xtask check` (exit 0), `cargo test --package xtask`
+    (77 tests), `pnpm -r typecheck`, `pnpm -r test`, `pnpm -r build`,
+    `pnpm install --frozen-lockfile` — all exit 0
+  - negative tests: a hand-edited `schemas/generated/manifest.json` made
+    `generate --check` exit 1 and name the stale file; a schema whose `$id`
+    claimed another domain was rejected with the expected prefix in the message
+  - notes: zero schemas exist, so the generated outputs are empty — but they are
+    written, committed, and verified, so the drift gate is live before the first
+    contract. Doc 801 lists a shorter directory set as an example; the eight
+    domains above come from the schema-canonical document. Generated output is
+    excluded from prettier and ESLint because it is not hand-maintained.
+  - follow-up: MIR-0006 adds the first real contract (protocol version and
+    readiness) and full JSON Schema validation; fixture generation from doc 805
+    section 4 point 4 is not implemented yet
 - [ ] MIR-0006 — Generate Rust and TypeScript handshake contracts
 - [ ] MIR-0007 — Create structured error foundation
 - [ ] MIR-0008 — Create structured tracing foundation

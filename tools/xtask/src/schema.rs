@@ -1,0 +1,517 @@
+//! Canonical schema discovery, validation, and deterministic generation.
+//!
+//! Canonical documentation:
+//! `docs/08-development/805-generated-contracts-and-schemas.md`, ADR-0057.
+//!
+//! Section 4 requires one root command that validates schemas, generates outputs,
+//! writes deterministic files, verifies no duplicate ids, and reports changed
+//! contracts. This module implements that pipeline. It currently discovers zero
+//! schemas, so the outputs are empty but still written and verified: the drift
+//! gate exists before there is a contract to drift.
+//!
+//! Rendering is pure so determinism is unit tested; `run` owns the file system.
+
+use std::path::{Path, PathBuf};
+
+use crate::json;
+
+/// The canonical schema domains from `805` section 2.
+///
+/// Each becomes `schemas/<domain>/v<major>/`. The list is ordered, and generated
+/// output follows it, so output never depends on directory iteration order.
+pub(crate) const DOMAINS: [&str; 8] = [
+    "ipc",
+    "project",
+    "bundle",
+    "diagnostics",
+    "sdk",
+    "extension-manifest",
+    "extension-ui",
+    "compatibility",
+];
+
+/// A discovered schema document.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SchemaFile {
+    /// Canonical domain directory, such as `ipc`.
+    pub(crate) domain: String,
+    /// Major version directory, such as `v1`.
+    pub(crate) version: String,
+    /// Path relative to the repository root, with forward slashes.
+    pub(crate) path: String,
+    /// The schema's `$id`.
+    pub(crate) id: String,
+    /// The schema's `title`.
+    pub(crate) title: String,
+}
+
+/// A schema that cannot be accepted.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SchemaError {
+    pub(crate) path: String,
+    pub(crate) detail: String,
+}
+
+/// Validate one schema document's required fields.
+///
+/// Only the fields the skeleton needs are required. `MIR-0006` adds the first real
+/// contract and tightens this with full JSON Schema validation.
+pub(crate) fn parse_schema(
+    domain: &str,
+    version: &str,
+    path: &str,
+    contents: &str,
+) -> Result<SchemaFile, SchemaError> {
+    let field = |key: &str| json::string_field(contents, key).map(str::to_owned);
+
+    let Some(id) = field("$id") else {
+        return Err(SchemaError {
+            path: path.to_owned(),
+            detail: "missing a string `$id`".to_owned(),
+        });
+    };
+
+    let Some(title) = field("title") else {
+        return Err(SchemaError {
+            path: path.to_owned(),
+            detail: "missing a string `title`".to_owned(),
+        });
+    };
+
+    // The id carries the domain and version so a moved file cannot silently
+    // change the contract it claims to define.
+    let expected_prefix = format!("mirae://{domain}/{version}/");
+    if !id.starts_with(&expected_prefix) {
+        return Err(SchemaError {
+            path: path.to_owned(),
+            detail: format!("`$id` must start with `{expected_prefix}`, found `{id}`"),
+        });
+    }
+
+    Ok(SchemaFile {
+        domain: domain.to_owned(),
+        version: version.to_owned(),
+        path: path.to_owned(),
+        id,
+        title,
+    })
+}
+
+/// Reject two schemas that claim the same `$id` (`805` invariant 8).
+pub(crate) fn find_duplicate_ids(schemas: &[SchemaFile]) -> Vec<SchemaError> {
+    let mut errors = Vec::new();
+
+    for (index, schema) in schemas.iter().enumerate() {
+        if let Some(earlier) = schemas[..index]
+            .iter()
+            .find(|candidate| candidate.id == schema.id)
+        {
+            errors.push(SchemaError {
+                path: schema.path.clone(),
+                detail: format!(
+                    "duplicate `$id` `{}`, already defined by `{}`",
+                    schema.id, earlier.path
+                ),
+            });
+        }
+    }
+
+    errors
+}
+
+/// Escape a string for embedding in JSON.
+fn escape_json(value: &str) -> String {
+    let mut escaped = String::with_capacity(value.len());
+
+    for character in value.chars() {
+        match character {
+            '"' => escaped.push_str("\\\""),
+            '\\' => escaped.push_str("\\\\"),
+            '\n' => escaped.push_str("\\n"),
+            '\r' => escaped.push_str("\\r"),
+            '\t' => escaped.push_str("\\t"),
+            other => escaped.push(other),
+        }
+    }
+
+    escaped
+}
+
+/// The marker that identifies generated files.
+pub(crate) const GENERATED_MARKER: &str = "@generated";
+
+/// Render the deterministic schema manifest.
+///
+/// Entries are sorted by id, so the output cannot depend on file system order.
+pub(crate) fn render_manifest(schemas: &[SchemaFile]) -> String {
+    let mut sorted: Vec<&SchemaFile> = schemas.iter().collect();
+    sorted.sort_by(|left, right| left.id.cmp(&right.id));
+
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str("  \"generated\": true,\n");
+    out.push_str("  \"note\": \"@generated by `cargo xtask generate`. Do not edit by hand.\",\n");
+    out.push_str("  \"domains\": [\n");
+    for (index, domain) in DOMAINS.iter().enumerate() {
+        let comma = if index + 1 == DOMAINS.len() { "" } else { "," };
+        out.push_str(&format!("    \"{domain}\"{comma}\n"));
+    }
+    out.push_str("  ],\n");
+    out.push_str("  \"schemas\": [");
+
+    if sorted.is_empty() {
+        out.push_str("]\n}\n");
+        return out;
+    }
+
+    out.push('\n');
+    for (index, schema) in sorted.iter().enumerate() {
+        let comma = if index + 1 == sorted.len() { "" } else { "," };
+        out.push_str("    {\n");
+        out.push_str(&format!("      \"id\": \"{}\",\n", escape_json(&schema.id)));
+        out.push_str(&format!(
+            "      \"title\": \"{}\",\n",
+            escape_json(&schema.title)
+        ));
+        out.push_str(&format!("      \"domain\": \"{}\",\n", schema.domain));
+        out.push_str(&format!("      \"version\": \"{}\",\n", schema.version));
+        out.push_str(&format!(
+            "      \"path\": \"{}\"\n",
+            escape_json(&schema.path)
+        ));
+        out.push_str(&format!("    }}{comma}\n"));
+    }
+    out.push_str("  ]\n}\n");
+
+    out
+}
+
+/// Render the generated Rust module.
+pub(crate) fn render_rust(schemas: &[SchemaFile]) -> String {
+    let mut sorted: Vec<&SchemaFile> = schemas.iter().collect();
+    sorted.sort_by(|left, right| left.id.cmp(&right.id));
+
+    let mut out = String::new();
+    out.push_str("//! Generated Rust contract bindings.\n//!\n");
+    out.push_str(&format!(
+        "//! {GENERATED_MARKER} by `cargo xtask generate`. Do not edit by hand.\n"
+    ));
+    out.push_str("//! Regenerate after changing any schema under `schemas/`.\n\n");
+
+    if sorted.is_empty() {
+        out.push_str("// No schemas are defined yet. `MIR-0006` adds the first contract.\n");
+        return out;
+    }
+
+    out.push_str("/// Every contract id this build knows about, sorted.\n");
+    out.push_str("pub const CONTRACT_IDS: [&str; ");
+    out.push_str(&sorted.len().to_string());
+    out.push_str("] = [\n");
+    for schema in &sorted {
+        out.push_str(&format!("    \"{}\",\n", escape_json(&schema.id)));
+    }
+    out.push_str("];\n");
+
+    out
+}
+
+/// Render the generated TypeScript module.
+pub(crate) fn render_typescript(schemas: &[SchemaFile]) -> String {
+    let mut sorted: Vec<&SchemaFile> = schemas.iter().collect();
+    sorted.sort_by(|left, right| left.id.cmp(&right.id));
+
+    let mut out = String::new();
+    out.push_str("/**\n * Generated TypeScript contract bindings.\n *\n");
+    out.push_str(&format!(
+        " * {GENERATED_MARKER} by `cargo xtask generate`. Do not edit by hand.\n"
+    ));
+    out.push_str(" * Regenerate after changing any schema under `schemas/`.\n */\n\n");
+
+    if sorted.is_empty() {
+        out.push_str("// No schemas are defined yet. `MIR-0006` adds the first contract.\n");
+        out.push_str("export const CONTRACT_IDS: readonly string[] = [];\n");
+        return out;
+    }
+
+    out.push_str("export const CONTRACT_IDS = [\n");
+    for schema in &sorted {
+        out.push_str(&format!("  \"{}\",\n", escape_json(&schema.id)));
+    }
+    out.push_str("] as const;\n");
+
+    out
+}
+
+/// One generated artifact: where it goes and what it should contain.
+pub(crate) struct Artifact {
+    /// Path relative to the repository root.
+    pub(crate) path: &'static str,
+    pub(crate) contents: String,
+}
+
+/// Build every generated artifact for the discovered schemas.
+pub(crate) fn artifacts(schemas: &[SchemaFile]) -> Vec<Artifact> {
+    vec![
+        Artifact {
+            path: "schemas/generated/manifest.json",
+            contents: render_manifest(schemas),
+        },
+        Artifact {
+            path: "schemas/generated/rust/contracts.rs",
+            contents: render_rust(schemas),
+        },
+        Artifact {
+            path: "schemas/generated/typescript/contracts.ts",
+            contents: render_typescript(schemas),
+        },
+    ]
+}
+
+/// Read the major-version directory name, if it is one.
+fn version_directory(name: &str) -> Option<String> {
+    let digits = name.strip_prefix('v')?;
+
+    if !digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit()) {
+        Some(name.to_owned())
+    } else {
+        None
+    }
+}
+
+/// Discover and validate every schema under `schemas/<domain>/v<major>/`.
+pub(crate) fn discover(root: &Path) -> (Vec<SchemaFile>, Vec<SchemaError>) {
+    let mut schemas = Vec::new();
+    let mut errors = Vec::new();
+
+    for domain in DOMAINS {
+        let domain_dir = root.join("schemas").join(domain);
+        let Ok(version_entries) = std::fs::read_dir(&domain_dir) else {
+            continue;
+        };
+
+        // Sort so output order never depends on the file system.
+        let mut versions: Vec<PathBuf> = version_entries
+            .flatten()
+            .map(|entry| entry.path())
+            .filter(|path| path.is_dir())
+            .collect();
+        versions.sort();
+
+        for version_path in versions {
+            let Some(version) = version_path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .and_then(version_directory)
+            else {
+                continue;
+            };
+
+            let Ok(entries) = std::fs::read_dir(&version_path) else {
+                continue;
+            };
+            let mut files: Vec<PathBuf> = entries
+                .flatten()
+                .map(|entry| entry.path())
+                .filter(|path| {
+                    path.file_name()
+                        .and_then(|name| name.to_str())
+                        .is_some_and(|name| name.ends_with(".schema.json"))
+                })
+                .collect();
+            files.sort();
+
+            for file in files {
+                let relative = file
+                    .strip_prefix(root)
+                    .unwrap_or(&file)
+                    .to_string_lossy()
+                    .replace('\\', "/");
+
+                match std::fs::read_to_string(&file) {
+                    Err(error) => errors.push(SchemaError {
+                        path: relative,
+                        detail: format!("could not be read: {error}"),
+                    }),
+                    Ok(contents) => match parse_schema(domain, &version, &relative, &contents) {
+                        Ok(schema) => schemas.push(schema),
+                        Err(error) => errors.push(error),
+                    },
+                }
+            }
+        }
+    }
+
+    errors.extend(find_duplicate_ids(&schemas));
+
+    (schemas, errors)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn schema(id: &str, title: &str, path: &str) -> SchemaFile {
+        SchemaFile {
+            domain: "ipc".to_owned(),
+            version: "v1".to_owned(),
+            path: path.to_owned(),
+            id: id.to_owned(),
+            title: title.to_owned(),
+        }
+    }
+
+    const VALID: &str = r#"{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mirae://ipc/v1/handshake",
+  "title": "Engine handshake"
+}"#;
+
+    #[test]
+    fn accepts_a_valid_schema() {
+        let parsed = parse_schema("ipc", "v1", "schemas/ipc/v1/handshake.schema.json", VALID);
+
+        assert_eq!(
+            parsed,
+            Ok(SchemaFile {
+                domain: "ipc".to_owned(),
+                version: "v1".to_owned(),
+                path: "schemas/ipc/v1/handshake.schema.json".to_owned(),
+                id: "mirae://ipc/v1/handshake".to_owned(),
+                title: "Engine handshake".to_owned(),
+            })
+        );
+    }
+
+    #[test]
+    fn rejects_a_schema_without_an_id() {
+        let contents = r#"{ "title": "No id" }"#;
+        let parsed = parse_schema("ipc", "v1", "a.schema.json", contents);
+
+        assert!(
+            parsed
+                .err()
+                .is_some_and(|error| error.detail.contains("missing a string `$id`"))
+        );
+    }
+
+    #[test]
+    fn rejects_a_schema_without_a_title() {
+        let contents = r#"{ "$id": "mirae://ipc/v1/x" }"#;
+        let parsed = parse_schema("ipc", "v1", "a.schema.json", contents);
+
+        assert!(parsed.is_err());
+    }
+
+    #[test]
+    fn rejects_an_id_that_disagrees_with_its_location() {
+        let contents = r#"{ "$id": "mirae://project/v1/x", "title": "Wrong domain" }"#;
+        let parsed = parse_schema("ipc", "v1", "schemas/ipc/v1/x.schema.json", contents);
+
+        assert!(
+            parsed
+                .err()
+                .is_some_and(|error| error.detail.contains("must start with"))
+        );
+    }
+
+    #[test]
+    fn rejects_a_duplicate_id() {
+        let schemas = vec![
+            schema("mirae://ipc/v1/handshake", "First", "a.schema.json"),
+            schema("mirae://ipc/v1/handshake", "Second", "b.schema.json"),
+        ];
+        let errors = find_duplicate_ids(&schemas);
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].path, "b.schema.json");
+        assert!(errors[0].detail.contains("a.schema.json"));
+    }
+
+    #[test]
+    fn accepts_distinct_ids() {
+        let schemas = vec![
+            schema("mirae://ipc/v1/handshake", "First", "a.schema.json"),
+            schema("mirae://ipc/v1/ready", "Second", "b.schema.json"),
+        ];
+
+        assert_eq!(find_duplicate_ids(&schemas), Vec::new());
+    }
+
+    #[test]
+    fn renders_an_empty_manifest_deterministically() {
+        let manifest = render_manifest(&[]);
+
+        assert!(manifest.contains("\"schemas\": []"));
+        assert!(manifest.ends_with("}\n"));
+        assert_eq!(manifest, render_manifest(&[]));
+    }
+
+    #[test]
+    fn manifest_order_does_not_depend_on_input_order() {
+        let first = schema("mirae://ipc/v1/a", "A", "a.schema.json");
+        let second = schema("mirae://ipc/v1/b", "B", "b.schema.json");
+
+        assert_eq!(
+            render_manifest(&[first.clone(), second.clone()]),
+            render_manifest(&[second, first])
+        );
+    }
+
+    #[test]
+    fn generated_outputs_carry_the_generated_marker() {
+        for artifact in artifacts(&[]) {
+            assert!(
+                artifact.contents.contains(GENERATED_MARKER),
+                "{} has no generated marker",
+                artifact.path
+            );
+        }
+    }
+
+    #[test]
+    fn rust_and_typescript_list_every_contract_id() {
+        let schemas = vec![
+            schema("mirae://ipc/v1/ready", "Ready", "b.schema.json"),
+            schema("mirae://ipc/v1/handshake", "Handshake", "a.schema.json"),
+        ];
+
+        let rust = render_rust(&schemas);
+        let typescript = render_typescript(&schemas);
+
+        assert!(rust.contains("CONTRACT_IDS: [&str; 2]"));
+        // Sorted, so handshake precedes ready in both languages.
+        assert!(
+            rust.find("handshake").unwrap_or_default() < rust.find("ready").unwrap_or(usize::MAX)
+        );
+        assert!(
+            typescript.find("handshake").unwrap_or_default()
+                < typescript.find("ready").unwrap_or(usize::MAX)
+        );
+    }
+
+    #[test]
+    fn escapes_json_special_characters() {
+        assert_eq!(escape_json("a\"b\\c"), "a\\\"b\\\\c");
+    }
+
+    #[test]
+    fn recognizes_major_version_directories() {
+        assert_eq!(version_directory("v1").as_deref(), Some("v1"));
+        assert_eq!(version_directory("v12").as_deref(), Some("v12"));
+        assert_eq!(version_directory("v1.2"), None);
+        assert_eq!(version_directory("draft"), None);
+        assert_eq!(version_directory("v"), None);
+    }
+
+    #[test]
+    fn the_repository_schemas_are_valid() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .ancestors()
+            .nth(2)
+            .map(Path::to_path_buf)
+            .unwrap_or_default();
+        let (_, errors) = discover(&root);
+
+        assert_eq!(errors, Vec::new());
+    }
+}

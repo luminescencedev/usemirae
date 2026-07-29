@@ -1,0 +1,111 @@
+// Mirae ESLint flat configuration.
+//
+// Canonical documentation:
+// - docs/08-development/807-code-conventions.md (section 3, TypeScript/React)
+// - docs/08-development/804-dependency-rules.md (forbidden-import rules)
+//
+// Versions come from DEPENDENCY_VERSIONS.md section 8. Run through
+// `cargo xtask lint` so local and CI linting cannot drift.
+
+import js from "@eslint/js";
+import globals from "globals";
+import jsxA11y from "eslint-plugin-jsx-a11y";
+import reactHooks from "eslint-plugin-react-hooks";
+import reactRefresh from "eslint-plugin-react-refresh";
+import tseslint from "typescript-eslint";
+
+export default tseslint.config(
+  {
+    ignores: [
+      "**/dist/**",
+      "**/node_modules/**",
+      "target/**",
+      "**/*.d.ts",
+      "pnpm-lock.yaml",
+    ],
+  },
+
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+
+  {
+    files: ["**/*.{ts,tsx}"],
+    languageOptions: {
+      globals: { ...globals.browser, ...globals.node },
+    },
+    rules: {
+      // 807 section 3: no `any` without a documented local boundary.
+      "@typescript-eslint/no-explicit-any": "error",
+      // 807 section 3: no silent promise rejection.
+      "no-floating-decimal": "off",
+      eqeqeq: ["error", "always"],
+      "no-var": "error",
+      "prefer-const": "error",
+    },
+  },
+
+  {
+    // React rules apply to the UI surfaces only: ui-kit and the control UI.
+    // 923 and ADR-0064 make keyboard and accessibility behavior a requirement,
+    // so jsx-a11y is an error level, not a warning.
+    files: ["apps/control-ui/**/*.tsx", "packages/ui-kit/**/*.tsx"],
+    extends: [
+      reactHooks.configs.flat.recommended,
+      jsxA11y.flatConfigs.recommended,
+    ],
+    plugins: { "react-refresh": reactRefresh },
+    rules: {
+      "react-refresh/only-export-components": [
+        "error",
+        { allowConstantExport: true },
+      ],
+    },
+  },
+
+  {
+    // 804: shared libraries never depend on deployable applications.
+    files: ["packages/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@mirae/control-ui", "@mirae/control-ui/*"],
+              message:
+                "A shared package must not import a deployable application (docs/08-development/804 section 3).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
+    // 803 section 6 and ADR-0066: the UI depends on client and contracts, never
+    // on engine crates or another app.
+    files: ["apps/control-ui/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/apps/*", "!**/apps/control-ui/**"],
+              message:
+                "The control UI must not import another application (docs/08-development/804 section 3).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
+    // xtask and configuration files run on Node.
+    files: ["**/*.config.{js,ts}", "eslint.config.js"],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+  },
+);

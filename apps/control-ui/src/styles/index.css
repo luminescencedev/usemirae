@@ -17,7 +17,11 @@ body {
   background: var(--mirae-canvas);
   color: var(--mirae-fg);
   font-family:
-    "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
+    "Inter",
+    "Segoe UI Variable Text",
+    "Segoe UI",
+    system-ui,
+    -apple-system,
     sans-serif;
   -webkit-font-smoothing: antialiased;
 }

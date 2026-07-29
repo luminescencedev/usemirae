@@ -60,7 +60,39 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
     affected-set detection), MIR-0005/MIR-0006 (register generators),
     MIR-0014 (extend `docs --check`), MIR-0015 (`test-integration` harness);
     `package` and `dev` commands from doc 806 remain unimplemented
-- [ ] MIR-0004 — Add repository policy checks
+- [x] MIR-0004 — Add repository policy checks
+  - status: done
+  - branch: `main` (trunk-based; no pull request)
+  - formatting: prettier pinned config plus `.prettierignore`; `cargo xtask fmt`
+    now runs rustfmt and prettier together. `docs/`, `assets/`, `*.md`, and the
+    generated `packages/ui-kit/src/styles/tokens.css` are excluded, the last one
+    because `cargo xtask generate` will own its formatting.
+  - linting: `eslint.config.js` flat config on the pinned stack (eslint 10,
+    typescript-eslint, react-hooks, react-refresh, jsx-a11y) with
+    `no-restricted-imports` encoding the 804 boundaries for TypeScript;
+    `cargo xtask lint` runs clippy and ESLint with warnings denied.
+  - policy: `cargo xtask policy` checks committed secrets, machine-local paths,
+    committed environment files, Rust dependency direction per 804 section 3, and
+    npm pin syntax per `DEPENDENCY_VERSIONS.md` section 2.
+  - generated drift: `cargo xtask generate --check` runs in CI already and reports
+    an empty registry, so the gate exists before there is output to drift.
+  - validation: `cargo xtask check` (exit 0), `cargo test --package xtask`
+    (64 tests), `pnpm exec eslint .`, `pnpm exec prettier --check .`,
+    `pnpm -r typecheck`, `pnpm -r test`, `pnpm -r build` — all exit 0
+  - negative tests: a planted `apiKey` literal, a planted Windows user-profile
+    path, and a `crates/domain/domain` manifest depending on `wgpu` and
+    `mirae-engine` all
+    produced violations and exit 1; a probe `.tsx` with `any` and an `img` without
+    `alt` produced two ESLint errors.
+  - notes: the first policy run produced 5 false positives (design-token paths
+    matching `token` as a substring). The matcher now compares the assignment key
+    rather than the line, and those exact cases are regression tests. The
+    ESLint 10 and `eslint-plugin-jsx-a11y` peer warning is a stale declaration:
+    the plugin loads and its rules fire under ESLint 10.
+  - follow-up: type-checked ESLint rules need `parserOptions.project` wiring;
+    Cargo pin syntax (`=x.y.z` per section 11) is unchecked because no external
+    crate exists yet; affected-set detection for `test-affected` is still
+    unimplemented and is not part of this ticket's goal
 - [ ] MIR-0005 — Create canonical schema skeleton
 - [ ] MIR-0006 — Generate Rust and TypeScript handshake contracts
 - [ ] MIR-0007 — Create structured error foundation

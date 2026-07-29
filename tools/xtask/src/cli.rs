@@ -19,6 +19,8 @@ pub(crate) enum Command {
     Test { scope: TestScope },
     /// Validate documentation structure.
     Docs { check: bool },
+    /// Enforce repository policy: secrets, local paths, dependency direction, pins.
+    Policy,
     /// Run the full baseline: generate --check, fmt --check, lint, test.
     Check,
     /// Print help, either general or for one command.
@@ -131,6 +133,10 @@ pub(crate) fn parse(args: &[String]) -> Result<Command, ParseError> {
         "docs" => Ok(Command::Docs {
             check: only_check_flag("docs", rest)?,
         }),
+        "policy" => {
+            no_flags("policy", rest)?;
+            Ok(Command::Policy)
+        }
         "check" => {
             no_flags("check", rest)?;
             Ok(Command::Check)
@@ -159,7 +165,8 @@ Commands:
   test-affected       Run the tests affected by the working tree
   test-integration    Run the cross-cutting tests under tests/
   docs [--check]      Validate documentation structure
-  check               Run generate --check, fmt --check, lint, and test
+  policy              Enforce secrets, local paths, dependency direction, pins
+  check               Run policy, generate --check, fmt --check, lint, and test
   help [command]      Show help for a command
 
 Documentation:
@@ -234,7 +241,7 @@ cargo xtask test-affected
 
 Intended to run only the tests affected by the working tree. Change detection is
 not implemented, so this currently runs the full suite and says so rather than
-implying narrower coverage.
+implying narrower coverage. No ticket owns it yet.
 "
         }
         "test-integration" => {
@@ -259,12 +266,29 @@ Header, duplicate-document-id, and ADR reference validation belong to MIR-0014,
 which extends this command.
 "
         }
+        "policy" => {
+            "\
+cargo xtask policy
+
+Enforces the repository policies that can be checked mechanically:
+
+  - committed secrets: private key blocks, provider token prefixes, and
+    secret-named fields assigned a credential-shaped literal
+  - machine-local absolute paths
+  - committed environment files (.env, but not .env.example)
+  - dependency direction from 804 section 3, over crate path groups
+  - npm dependency pins: only an exact version, `catalog:`, or `workspace:`
+
+Cycles are not checked here because cargo and pnpm already reject them. Import-
+level dependency rules for TypeScript live in eslint.config.js.
+"
+        }
         "check" => {
             "\
 cargo xtask check
 
-Runs the baseline from docs/08-development/809 section 2 in order:
-generate --check, fmt --check, lint, then test. Stops at the first failure.
+Runs the baseline from docs/08-development/809 section 2 in order: policy,
+generate --check, fmt --check, lint, test, then docs. Stops at the first failure.
 "
         }
         _ => return None,
@@ -381,6 +405,7 @@ mod tests {
             "test-affected",
             "test-integration",
             "docs",
+            "policy",
             "check",
         ] {
             let help = command_help(command);
@@ -403,6 +428,7 @@ mod tests {
             "test-affected",
             "test-integration",
             "docs",
+            "policy",
             "check",
         ] {
             assert!(help.contains(command), "general help omits `{command}`");

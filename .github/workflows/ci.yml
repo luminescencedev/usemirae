@@ -10,12 +10,13 @@
 #     here, so a pin can never drift from DEPENDENCY_VERSIONS.md.
 #
 # Jobs from 810 section 2 that are not implemented yet, with their owning ticket:
-#   - repository policy and secret scan .......... MIR-0004
-#   - TypeScript lint (ESLint flat config) ....... MIR-0004
-#   - schema and codegen drift ................... MIR-0005, MIR-0006
+#   - schema and codegen drift ................... MIR-0005, MIR-0006 register the
+#     generators; `cargo xtask generate --check` already runs and reports that the
+#     registry is empty, so the gate exists before there is anything to drift
 #   - integration tests .......................... MIR-0015
-#   - architecture dependency checks ............. MIR-0004
-#   - macOS builds, packaging, benchmarks ........ later sprints
+#   - security parser and fuzz smoke ............. later sprints
+#   - benchmark smoke ............................ later sprints
+#   - macOS builds and packaging ................. later sprints
 #
 # Rust and documentation steps go through `cargo xtask` so CI cannot drift from
 # the local command surface. The frontend steps stay as pnpm filters: splitting by
@@ -68,8 +69,43 @@ jobs:
 
       - run: cargo xtask docs --check
 
+  policy:
+    name: Repository policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: cargo --version
+
+      # Secrets, machine-local paths, committed environment files, dependency
+      # direction, and npm pins. Needs no Node: the checks are pure Rust.
+      - run: cargo xtask policy
+
+      - run: cargo xtask generate --check
+
+  format-and-lint:
+    name: Format and lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - run: corepack enable
+
+      # `cargo xtask fmt` and `lint` cover both languages, so this job installs
+      # the frontend workspace to keep CI on the same command surface as a
+      # developer machine (810 invariant 10).
+      - run: pnpm install --frozen-lockfile
+
+      - run: cargo xtask fmt --check
+
+      - run: cargo xtask lint
+
   rust:
-    name: Rust (${{ matrix.os }})
+    name: Rust tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       # A Windows-only failure must stay visible when Linux passes.
@@ -80,10 +116,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - run: cargo --version
-
-      - run: cargo xtask fmt --check
-
-      - run: cargo xtask lint
 
       - run: cargo test --workspace
 

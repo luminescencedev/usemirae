@@ -11,6 +11,7 @@
 mod cli;
 mod docs;
 mod json;
+mod policy;
 mod runner;
 mod toolchain;
 
@@ -51,37 +52,89 @@ fn generate(check: bool) -> Result<(), StepError> {
     Ok(())
 }
 
-/// Format Rust sources, or verify formatting.
+/// Format Rust and TypeScript sources, or verify formatting.
 fn fmt(check: bool, root: &Path) -> Result<(), StepError> {
-    let step = if check {
-        "cargo fmt --all -- --check"
+    let steps: [&str; 2] = if check {
+        ["cargo fmt --all -- --check", "pnpm exec prettier --check ."]
     } else {
-        "cargo fmt --all"
+        ["cargo fmt --all", "pnpm exec prettier --write ."]
     };
 
-    runner::run(step, root)?;
-
-    println!(
-        "note: TypeScript formatting is not wired up yet; prettier configuration \
-         belongs to MIR-0004."
-    );
-
-    Ok(())
+    runner::run_all(&steps, root)
 }
 
-/// Lint with warnings denied.
+/// Lint both workspaces with warnings denied.
 fn lint(root: &Path) -> Result<(), StepError> {
-    runner::run(
-        "cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    runner::run_all(
+        &[
+            "cargo clippy --workspace --all-targets --all-features -- -D warnings",
+            "pnpm exec eslint . --max-warnings 0",
+        ],
         root,
-    )?;
+    )
+}
 
-    println!(
-        "note: TypeScript linting is not wired up yet; the ESLint flat \
-         configuration belongs to MIR-0004."
-    );
+/// Enforce the repository policies that can be checked mechanically.
+fn enforce_policy(root: &Path) -> Result<(), StepError> {
+    let files = policy::collect_text_files(root);
+    let mut violations = Vec::new();
+    let mut relative_paths = Vec::new();
 
-    Ok(())
+    for file in &files {
+        let relative = file
+            .strip_prefix(root)
+            .unwrap_or(file)
+            .to_string_lossy()
+            .replace('\\', "/");
+        relative_paths.push(relative.clone());
+
+        let Some(contents) = runner::read_file(file) else {
+            continue;
+        };
+
+        // This crate's own matcher tables contain the patterns it looks for.
+        if relative == "tools/xtask/src/policy.rs" {
+            continue;
+        }
+
+        violations.extend(policy::scan_secrets(&relative, &contents));
+        violations.extend(policy::scan_local_paths(&relative, &contents));
+
+        if relative.ends_with("Cargo.toml") {
+            violations.extend(policy::check_dependency_direction(&relative, &contents));
+        }
+
+        if relative.ends_with("package.json") {
+            violations.extend(policy::check_npm_pins(&relative, &contents));
+        }
+    }
+
+    violations.extend(policy::check_env_files(&relative_paths));
+
+    println!("Scanned {} text files.", files.len());
+
+    if violations.is_empty() {
+        println!("No policy violations.");
+        println!(
+            "note: secrets, local paths, environment files, dependency direction, and \
+             npm pins are enforced here; TypeScript import rules live in \
+             eslint.config.js, and cycles are rejected by cargo and pnpm."
+        );
+        return Ok(());
+    }
+
+    eprintln!("{} policy violation(s):", violations.len());
+    for violation in &violations {
+        eprintln!(
+            "  [{}] {}: {}",
+            violation.rule, violation.location, violation.detail
+        );
+    }
+
+    Err(StepError {
+        command: "cargo xtask policy".to_owned(),
+        reason: format!("found {} violation(s)", violations.len()),
+    })
 }
 
 /// Run tests for the requested scope.
@@ -90,8 +143,8 @@ fn test(scope: &TestScope, root: &Path) -> Result<(), StepError> {
         TestScope::All => runner::run_all(&["cargo test --workspace", "pnpm -r test"], root),
         TestScope::Affected => {
             println!(
-                "note: affected-set detection is not implemented, so the full suite runs. \
-                 Change detection belongs to MIR-0004."
+                "note: affected-set detection is not implemented, so the full suite runs \
+                 rather than implying narrower coverage. No ticket owns it yet."
             );
             runner::run_all(&["cargo test --workspace", "pnpm -r test"], root)
         }
@@ -153,6 +206,7 @@ fn validate_docs(root: &Path) -> Result<(), StepError> {
 
 /// Run the baseline validation from `809` section 2, stopping at the first failure.
 fn check(root: &Path) -> Result<(), StepError> {
+    enforce_policy(root)?;
     generate(true)?;
     fmt(true, root)?;
     lint(root)?;
@@ -205,6 +259,7 @@ fn main() -> ExitCode {
         Command::Lint => lint(&root),
         Command::Test { scope } => test(&scope, &root),
         Command::Docs { .. } => validate_docs(&root),
+        Command::Policy => enforce_policy(&root),
         Command::Check => check(&root),
     };
 

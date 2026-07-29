@@ -1,0 +1,24 @@
+# Build output and dependencies.
+dist/
+node_modules/
+target/
+coverage/
+playwright-report/
+test-results/
+
+# Generated or locked by tooling.
+pnpm-lock.yaml
+Cargo.lock
+schemas/generated/
+
+# A generated representation of packages/ui-kit/tokens/design-tokens.v1.json.
+# `cargo xtask generate` will own its formatting; reformatting it here would put
+# the committed file permanently out of step with its generator.
+packages/ui-kit/src/styles/tokens.css
+
+# Canonical documentation and brand assets are authored text and binary sources.
+# Reformatting them would produce a large diff with no behavioral value and would
+# fight the wording of the specifications.
+docs/
+assets/
+*.md

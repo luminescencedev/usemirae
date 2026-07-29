@@ -92,8 +92,16 @@ cargo xtask test                every test in both workspaces
 cargo xtask test-affected       the tests affected by the working tree
 cargo xtask test-integration    cross-cutting tests under tests/
 cargo xtask docs [--check]      validate documentation structure
-cargo xtask check               generate --check, fmt --check, lint, test, docs
+cargo xtask policy              secrets, local paths, dependency direction, pins
+cargo xtask check               policy, generate, fmt, lint, test, docs
 ```
+
+`fmt` covers rustfmt and prettier; `lint` covers clippy and ESLint. Both deny
+warnings. `policy` enforces what can be checked mechanically: committed secrets,
+machine-local paths, environment files, the dependency direction from
+[`804`](docs/08-development/804-dependency-rules.md), and npm pin syntax.
+TypeScript import boundaries are enforced by
+[`eslint.config.js`](eslint.config.js).
 
 Each command states what it does not yet cover and which ticket owns the rest, so
 a passing run never implies more coverage than exists. The frontend commands stay

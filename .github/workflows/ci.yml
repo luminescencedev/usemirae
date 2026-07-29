@@ -1,4 +1,4 @@
-﻿# Mirae continuous integration.
+# Mirae continuous integration.
 #
 # Canonical documentation: docs/08-development/810-ci-cd-pipeline.md.
 #
@@ -18,6 +18,13 @@
 #   - architecture dependency checks ............. MIR-0004
 #   - macOS builds, packaging, benchmarks ........ later sprints
 # Once MIR-0003 lands, these steps become `cargo xtask` invocations.
+#
+# The actions are intentionally pinned to @v4. Every job is annotated with a
+# Node 20 deprecation warning, but @v5 of setup-node resolves
+# package.json#packageManager before `corepack enable` runs and fails with
+# "Unable to locate executable file: pnpm". Moving to @v5 requires installing
+# pnpm before setup-node, or disabling its package-manager detection; that is a
+# tooling ticket, not a blind version bump. Verified on run 30496018726.
 
 name: CI
 
@@ -41,9 +48,9 @@ jobs:
     name: Toolchain pins
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
 
@@ -65,7 +72,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
       - run: cargo --version
 
@@ -83,9 +90,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
 

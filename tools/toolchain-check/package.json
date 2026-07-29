@@ -1,0 +1,21 @@
+{
+  "name": "@mirae/toolchain-check",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Fails early when the local Rust, Node, or pnpm version does not match the version lock.",
+  "exports": {
+    ".": "./src/pins.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@mirae/config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

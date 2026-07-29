@@ -1,0 +1,102 @@
+# Mirae continuous integration.
+#
+# Canonical documentation: docs/08-development/810-ci-cd-pipeline.md.
+#
+# Two rules shape this file:
+#   - CI commands match local commands (810 invariant 10), so every step below is
+#     a command a contributor can run unchanged;
+#   - CI reads the same version files as a developer machine (.node-version,
+#     package.json#packageManager, rust-toolchain.toml). No version is written
+#     here, so a pin can never drift from DEPENDENCY_VERSIONS.md.
+#
+# Jobs from 810 section 2 that are not implemented yet, with their owning ticket:
+#   - repository policy and secret scan .......... MIR-0004
+#   - TypeScript lint (ESLint flat config) ....... MIR-0004
+#   - schema and codegen drift ................... MIR-0005, MIR-0006
+#   - documentation links and structure .......... MIR-0014
+#   - integration tests .......................... MIR-0015
+#   - architecture dependency checks ............. MIR-0004
+#   - macOS builds, packaging, benchmarks ........ later sprints
+# Once MIR-0003 lands, these steps become `cargo xtask` invocations.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Never grant more than reading the repository; no job needs a token, and no job
+# prints secrets (810 invariant 4).
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  toolchain:
+    name: Toolchain pins
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      # Activates the pnpm version pinned by package.json#packageManager.
+      - run: corepack enable
+
+      # rustup reads rust-toolchain.toml and installs the pinned channel on the
+      # first cargo invocation inside the repository.
+      - run: cargo --version
+
+      - run: pnpm run check:toolchain
+
+  rust:
+    name: Rust (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # A Windows-only failure must stay visible when Linux passes.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: cargo --version
+
+      - run: cargo fmt --all -- --check
+
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - run: cargo test --workspace
+
+  frontend:
+    name: Frontend (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - run: corepack enable
+
+      # The root preinstall hook verifies the toolchain before anything is
+      # fetched, and --frozen-lockfile fails if pnpm-lock.yaml is out of date.
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm -r typecheck
+
+      - run: pnpm -r test
+
+      - run: pnpm -r build

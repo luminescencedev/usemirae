@@ -35,10 +35,21 @@ Read it before touching any manifest, and never widen a pin to `^`, `~`, or `lat
 | pnpm | `11.17.0` | `package.json#packageManager` |
 | TypeScript | `6.0.3` | pnpm catalog in `pnpm-workspace.yaml` |
 
-Also required: Git and platform-native build tools. `MIR-0002` hardens these pins
-and makes wrong versions fail early.
+Also required: Git and platform-native build tools.
 
 npm, Yarn, Bun, and Deno are not project package managers.
+
+Verify the local toolchain at any time:
+
+```bash
+pnpm run check:toolchain
+```
+
+The same check runs as the root `preinstall` hook, so a wrong Rust, Node, or pnpm
+version fails before any dependency is fetched. It reports the expected version,
+the found version, and the command that fixes it. To install without the gate,
+use `pnpm install --ignore-scripts`. See
+[`tools/toolchain-check/README.md`](tools/toolchain-check/README.md).
 
 ## Bootstrap
 
@@ -81,6 +92,14 @@ cargo xtask lint
 cargo xtask test-affected
 cargo xtask docs --check
 ```
+
+## Continuous integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs the same commands on
+`ubuntu-latest` and `windows-latest`, and reads the same version files as a
+developer machine, so a CI version can never drift from the lock. Jobs still
+missing from `docs/08-development/810-ci-cd-pipeline.md` are listed at the top of
+the workflow with their owning ticket.
 
 ## Current state
 

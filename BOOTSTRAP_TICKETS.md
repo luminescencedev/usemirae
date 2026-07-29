@@ -15,10 +15,23 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
   - follow-up: MIR-0002 (toolchain enforcement), MIR-0003 (`xtask`),
     MIR-0004 (policy checks and ESLint flat config), MIR-DEPS-0001 (ESLint 10
     vs `eslint-plugin-jsx-a11y` peer conflict)
-- [ ] MIR-0002 — Pin toolchains
-  - note: `rust-toolchain.toml`, `.node-version`, `.npmrc`, and the pnpm catalog
-    already carry the exact pins from `DEPENDENCY_VERSIONS.md`; this ticket still
-    owns fail-early enforcement and CI parity
+- [x] MIR-0002 — Pin toolchains
+  - status: done
+  - branch: `main` (trunk-based; no pull request)
+  - validation: `pnpm run check:toolchain` (pass, and exit 1 with actionable
+    output when a pin is deliberately broken), `pnpm --filter
+    @mirae/toolchain-check test` (35 tests), `cargo fmt --all -- --check`,
+    `cargo clippy --workspace --all-targets --all-features -- -D warnings`,
+    `cargo test --workspace`, `pnpm install --frozen-lockfile`,
+    `pnpm -r typecheck`, `pnpm -r test`, `pnpm -r build` — all exit 0
+  - notes: version files were committed by MIR-0001; this ticket added
+    enforcement (`tools/toolchain-check` plus the root `preinstall` hook) and CI
+    parity (`.github/workflows/ci.yml`). The workflow YAML is not parseable
+    locally — no approved YAML parser is installed — so its first GitHub run is
+    its proof.
+  - follow-up: MIR-0003 absorbs the check into `cargo xtask bootstrap` and
+    deletes `tools/toolchain-check`; MIR-0004 adds the policy, secret-scan and
+    lint jobs; MIR-DEPS-0001 covers the ESLint 10 peer conflict
 - [ ] MIR-0003 — Add `xtask`
 - [ ] MIR-0004 — Add repository policy checks
 - [ ] MIR-0005 — Create canonical schema skeleton

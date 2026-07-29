@@ -1,0 +1,10 @@
+[package]
+name = "mirae-errors"
+description = "Structured error taxonomy and safe error context."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

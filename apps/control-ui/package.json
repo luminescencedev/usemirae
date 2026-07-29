@@ -1,0 +1,44 @@
+{
+  "name": "@mirae/control-ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Mirae operator interface. Hosts screens and composes @mirae/ui-kit; owns no engine truth.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@mirae/client": "workspace:*",
+    "@mirae/contracts": "workspace:*",
+    "@mirae/localization": "workspace:*",
+    "@mirae/ui-kit": "workspace:*",
+    "@tanstack/react-virtual": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-hook-form": "catalog:"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "catalog:",
+    "@mirae/config": "workspace:*",
+    "@mirae/test-utils": "workspace:*",
+    "@playwright/test": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "jsdom": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}

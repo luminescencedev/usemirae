@@ -1,0 +1,15 @@
+{
+  "name": "@mirae/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared TypeScript, lint, build, and test configuration.",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./tsconfig.react.json": "./tsconfig.react.json"
+  },
+  "files": [
+    "tsconfig.base.json",
+    "tsconfig.react.json"
+  ]
+}

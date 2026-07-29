@@ -1,0 +1,10 @@
+[package]
+name = "mirae-domain"
+description = "Project-domain entities and validation. No OS, GPU, FFmpeg, UI, or network dependencies."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

@@ -4,8 +4,21 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
 
 ## Current Sprint — Sprint 0
 
-- [ ] MIR-0001 — Initialize monorepo
+- [x] MIR-0001 — Initialize monorepo
+  - status: done
+  - branch: `feat/MIR-0001-initialize-monorepo`
+  - PR: not published
+  - validation: `cargo check --workspace`, `cargo fmt --all -- --check`,
+    `cargo clippy --workspace --all-targets --all-features -- -D warnings`,
+    `cargo test --workspace`, `pnpm install --frozen-lockfile`,
+    `pnpm -r typecheck`, `pnpm -r test`, `pnpm -r build` — all exit 0
+  - follow-up: MIR-0002 (toolchain enforcement), MIR-0003 (`xtask`),
+    MIR-0004 (policy checks and ESLint flat config), MIR-DEPS-0001 (ESLint 10
+    vs `eslint-plugin-jsx-a11y` peer conflict)
 - [ ] MIR-0002 — Pin toolchains
+  - note: `rust-toolchain.toml`, `.node-version`, `.npmrc`, and the pnpm catalog
+    already carry the exact pins from `DEPENDENCY_VERSIONS.md`; this ticket still
+    owns fail-early enforcement and CI parity
 - [ ] MIR-0003 — Add `xtask`
 - [ ] MIR-0004 — Add repository policy checks
 - [ ] MIR-0005 — Create canonical schema skeleton

@@ -1,0 +1,9 @@
+/*
+ * Mirae UI kit root stylesheet.
+ *
+ * `tokens.css` is a generated representation of `tokens/design-tokens.v1.json`
+ * and must eventually be produced by `cargo xtask generate`. Do not add
+ * independent color values here or in feature components.
+ */
+
+@import "./tokens.css";

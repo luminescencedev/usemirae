@@ -1,0 +1,10 @@
+[package]
+name = "mirae-renderer-wgpu"
+description = "`wgpu` renderer implementation. The only crate group allowed to depend on `wgpu`."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

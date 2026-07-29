@@ -1,0 +1,10 @@
+[package]
+name = "mirae-media-types"
+description = "Media units, timebases, formats, discontinuities, and leases."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

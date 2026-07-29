@@ -1,0 +1,10 @@
+[package]
+name = "mirae-runtime"
+description = "Engine lifecycle, service orchestration, and process coordination."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

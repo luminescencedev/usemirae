@@ -1,0 +1,10 @@
+[package]
+name = "mirae-state"
+description = "Authoritative state store, generations, snapshots, and patches."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

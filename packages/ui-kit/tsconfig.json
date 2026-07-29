@@ -1,0 +1,4 @@
+{
+  "extends": "@mirae/config/tsconfig.react.json",
+  "include": ["src", "tests", "vitest.config.ts"]
+}

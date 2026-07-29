@@ -1,0 +1,10 @@
+[package]
+name = "mirae-extension-host-runtime"
+description = "Host-side extension runtime and quotas."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

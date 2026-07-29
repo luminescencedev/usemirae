@@ -1,0 +1,10 @@
+[package]
+name = "mirae-scene"
+description = "Semantic scene graph."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

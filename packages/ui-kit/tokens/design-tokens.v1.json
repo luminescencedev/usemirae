@@ -1,0 +1,113 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "meta": {
+    "name": "Mirae Obsidian Precision",
+    "version": "1.0.0",
+    "theme": "dark",
+    "date": "2026-07-29"
+  },
+  "color": {
+    "canvas": "#07080A",
+    "chrome": "#0B0D11",
+    "surface": "#101319",
+    "surfaceRaised": "#151922",
+    "surfaceInteractive": "#1B2029",
+    "surfaceStrong": "#222833",
+    "borderSoft": "#20252D",
+    "border": "#2A303A",
+    "borderStrong": "#353D49",
+    "fg": "#F4F6F8",
+    "fgSecondary": "#C9CED6",
+    "fgMuted": "#9AA1AC",
+    "fgSubtle": "#68707C",
+    "fgDisabled": "#454C57",
+    "accent": "#7C8FFF",
+    "accentHover": "#8E9FFF",
+    "accentPressed": "#6579F0",
+    "accentFg": "#FFFFFF",
+    "accentSoft": "#1B2140",
+    "statusLive": "#FF4D6D",
+    "statusSuccess": "#45D39B",
+    "statusWarning": "#F5B85C",
+    "statusInfo": "#61B6FF"
+  },
+  "font": {
+    "display": "Inter Display",
+    "sans": "Inter",
+    "mono": "DejaVu Sans Mono",
+    "size": {
+      "xs": "10px",
+      "sm": "11px",
+      "body": "13px",
+      "control": "13px",
+      "section": "15px",
+      "workspace": "24px",
+      "hero": "40px"
+    },
+    "weight": {
+      "regular": 400,
+      "medium": 500,
+      "semibold": 600,
+      "bold": 700
+    }
+  },
+  "space": {
+    "0": "0px",
+    "0_5": "2px",
+    "1": "4px",
+    "1_5": "6px",
+    "2": "8px",
+    "3": "12px",
+    "4": "16px",
+    "5": "20px",
+    "6": "24px",
+    "8": "32px",
+    "10": "40px"
+  },
+  "radius": {
+    "xs": "4px",
+    "sm": "6px",
+    "md": "8px",
+    "panel": "10px",
+    "floating": "14px",
+    "frame": "18px"
+  },
+  "size": {
+    "controlCompact": "26px",
+    "control": "30px",
+    "controlComfortable": "34px",
+    "titlebar": "44px",
+    "leftDock": "248px",
+    "rightDock": "320px",
+    "bottomDock": "236px"
+  },
+  "motion": {
+    "duration": {
+      "instant": "90ms",
+      "fast": "140ms",
+      "normal": "180ms",
+      "panel": "240ms",
+      "workspace": "300ms"
+    },
+    "ease": {
+      "out": "cubic-bezier(0.16, 1, 0.3, 1)",
+      "inOut": "cubic-bezier(0.65, 0, 0.35, 1)"
+    },
+    "spring": {
+      "type": "spring",
+      "stiffness": 420,
+      "damping": 38,
+      "mass": 0.8
+    }
+  },
+  "z": {
+    "base": 0,
+    "dock": 10,
+    "floating": 30,
+    "popover": 50,
+    "dialog": 70,
+    "commandPalette": 80,
+    "toast": 90,
+    "critical": 100
+  }
+}

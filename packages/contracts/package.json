@@ -1,0 +1,17 @@
+{
+  "name": "@mirae/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Generated TypeScript bindings for IPC, project, SDK, and diagnostics schemas.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@mirae/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

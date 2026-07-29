@@ -1,0 +1,10 @@
+[package]
+name = "mirae-test-support"
+description = "Shared test fixtures, fake clocks, and deterministic transports."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

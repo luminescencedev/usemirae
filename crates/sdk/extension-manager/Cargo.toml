@@ -1,0 +1,10 @@
+[package]
+name = "mirae-extension-manager"
+description = "Extension package, permission, and lifecycle host supervision."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

@@ -1,0 +1,10 @@
+[package]
+name = "mirae-platform-windows"
+description = "Windows platform adapters."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

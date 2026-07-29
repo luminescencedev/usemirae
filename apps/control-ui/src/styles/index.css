@@ -1,0 +1,23 @@
+@import "tailwindcss";
+@import "@mirae/ui-kit/styles/tokens.css";
+
+/*
+ * Only token references belong here. Feature components must not define
+ * independent color values (see docs/09-ui-ux/907-color-and-theme.md).
+ */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--mirae-canvas);
+  color: var(--mirae-fg);
+  font-family:
+    "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}

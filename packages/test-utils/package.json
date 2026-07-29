@@ -1,0 +1,26 @@
+{
+  "name": "@mirae/test-utils",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "UI test harnesses, fake engine client, and accessibility helpers.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mirae/client": "workspace:*",
+    "@mirae/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@mirae/config": "workspace:*",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "catalog:",
+    "@types/react": "catalog:",
+    "jsdom": "catalog:",
+    "typescript": "catalog:"
+  }
+}

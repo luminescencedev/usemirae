@@ -1,0 +1,10 @@
+[package]
+name = "mirae-observability"
+description = "Tracing, metrics, correlation, redaction, and diagnostic event helpers."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

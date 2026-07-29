@@ -1,0 +1,10 @@
+[package]
+name = "mirae-render-graph"
+description = "Logical passes, resources, dependencies, and validation."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

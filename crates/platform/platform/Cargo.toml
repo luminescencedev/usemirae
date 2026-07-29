@@ -1,0 +1,10 @@
+[package]
+name = "mirae-platform"
+description = "Cross-platform interfaces and capability model."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

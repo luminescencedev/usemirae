@@ -1,0 +1,10 @@
+[package]
+name = "mirae-extension-brokers"
+description = "File, network, storage, and credential mediation for extensions."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

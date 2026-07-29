@@ -1,0 +1,10 @@
+[package]
+name = "mirae-audio"
+description = "Canonical audio graph and routing."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

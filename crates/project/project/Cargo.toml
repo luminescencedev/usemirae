@@ -1,0 +1,10 @@
+[package]
+name = "mirae-project"
+description = "Project format mapping, persistence orchestration, migrations, assets, and recovery."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

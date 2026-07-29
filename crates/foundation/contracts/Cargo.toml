@@ -1,0 +1,10 @@
+[package]
+name = "mirae-contracts"
+description = "Generated Rust bindings for IPC, project, SDK, and diagnostics schemas."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

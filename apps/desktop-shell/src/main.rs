@@ -1,0 +1,42 @@
+//! Native shell entry point and UI host.
+//!
+//! Placeholder binary created by `MIR-0001 — Initialize monorepo`. Engine launch,
+//! authentication, supervision, and UI hosting arrive with `MIR-0010`.
+//!
+//! Canonical documentation: `docs/08-development/802-rust-workspace-and-crates.md`,
+//! `docs/05-platform/501-desktop-shell.md`.
+
+use std::io::Write as _;
+use std::process::ExitCode;
+
+/// Process role this application reports to diagnostics.
+const ROLE: &str = "shell";
+
+/// Ticket that replaces this placeholder with real process lifecycle.
+const IMPLEMENTED_BY: &str = "MIR-0010";
+
+fn main() -> ExitCode {
+    // Only the version metadata contract from `801-monorepo-architecture.md` §4
+    // exists yet. Any other invocation fails loudly rather than opening a window
+    // that cannot supervise an engine.
+    let wants_version = std::env::args().any(|arg| arg == "--version" || arg == "-V");
+
+    if wants_version {
+        let mut out = std::io::stdout().lock();
+        let _ = writeln!(
+            out,
+            "{name} {version} role={ROLE} state=placeholder implemented-by={IMPLEMENTED_BY}",
+            name = env!("CARGO_PKG_NAME"),
+            version = env!("CARGO_PKG_VERSION"),
+        );
+        return ExitCode::SUCCESS;
+    }
+
+    let mut err = std::io::stderr().lock();
+    let _ = writeln!(
+        err,
+        "{name}: placeholder process, no runtime yet (see {IMPLEMENTED_BY}). Try --version.",
+        name = env!("CARGO_PKG_NAME"),
+    );
+    ExitCode::FAILURE
+}

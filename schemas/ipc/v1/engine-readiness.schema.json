@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mirae://ipc/v1/engine-readiness",
+  "title": "Engine readiness",
+  "description": "What the engine reports about its own lifecycle so the shell can decide whether to send work. No command is accepted before handshake completion, and readiness is not authorization (108 sections 6 and 11).",
+  "type": "object",
+  "properties": {
+    "state": {
+      "type": "string",
+      "enum": ["starting", "ready", "degraded", "stopping", "stopped"],
+      "description": "Lifecycle state. `degraded` means the engine is serving requests with reduced capability and the detail field explains what is missing."
+    },
+    "protocolMajor": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535,
+      "description": "Major protocol version this engine speaks."
+    },
+    "protocolMinor": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535,
+      "description": "Minor protocol version this engine speaks."
+    },
+    "engineSessionId": {
+      "type": "string",
+      "maxLength": 64,
+      "description": "Identifies one engine process lifetime. A reconnecting client presents the last session id it saw, and a different value means its replicated state is stale."
+    },
+    "detail": {
+      "type": "string",
+      "maxLength": 256,
+      "description": "Optional safe explanation for a degraded or stopping state. Never carries panic text, secrets, or machine paths (108 section 14)."
+    }
+  },
+  "required": ["state", "protocolMajor", "protocolMinor", "engineSessionId"],
+  "additionalProperties": false
+}

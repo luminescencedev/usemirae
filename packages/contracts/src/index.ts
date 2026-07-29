@@ -1,11 +1,12 @@
 /**
  * Generated TypeScript bindings for IPC, project, SDK, and diagnostics schemas.
  *
- * Bindings in this package are generated. Do not edit them manually; regenerate
- * through `cargo xtask generate` once `MIR-0003` and `MIR-0005` land.
+ * The contents of `./generated.ts` are produced by `cargo xtask generate` from
+ * the schemas under `schemas/`. Do not edit them by hand: `cargo xtask generate
+ * --check` fails on any difference, and CI runs it.
  *
- * Placeholder package created by `MIR-0001 — Initialize monorepo`.
- * Canonical documentation: `docs/08-development/805-generated-contracts-and-schemas.md`.
+ * Generated contracts are the only DTO source for the frontend workspace
+ * (`docs/08-development/803-frontend-workspace-and-packages.md` invariant 1).
  */
 
-export {};
+export * from "./generated";

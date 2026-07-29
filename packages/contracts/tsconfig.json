@@ -1,4 +1,4 @@
 {
   "extends": "@mirae/config/tsconfig.base.json",
-  "include": ["src"]
+  "include": ["src", "tests", "vitest.config.ts"]
 }

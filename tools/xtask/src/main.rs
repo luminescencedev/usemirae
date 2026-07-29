@@ -11,6 +11,7 @@
 mod cli;
 mod docs;
 mod json;
+mod naming;
 mod policy;
 mod runner;
 mod schema;

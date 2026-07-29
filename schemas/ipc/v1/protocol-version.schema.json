@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mirae://ipc/v1/protocol-version",
+  "title": "Protocol version",
+  "description": "The engine and shell protocol version. A major mismatch means an incompatible protocol and the connection is rejected; minor versions may add optional messages or fields, and the selected minor is the highest mutually supported one (108 section 8).",
+  "type": "object",
+  "properties": {
+    "major": {
+      "type": "integer",
+      "const": 1,
+      "minimum": 0,
+      "maximum": 65535,
+      "description": "Incompatible protocol generation. A peer that does not support this exact major version must be rejected."
+    },
+    "minor": {
+      "type": "integer",
+      "const": 0,
+      "minimum": 0,
+      "maximum": 65535,
+      "description": "Backward-compatible revision within the major version. A higher minor may add optional messages and fields only."
+    }
+  },
+  "required": ["major", "minor"],
+  "additionalProperties": false
+}

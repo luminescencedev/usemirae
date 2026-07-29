@@ -11,5 +11,24 @@
     "extension-ui",
     "compatibility"
   ],
-  "schemas": []
+  "contracts": [
+    {
+      "id": "mirae://ipc/v1/engine-readiness",
+      "title": "Engine readiness",
+      "domain": "ipc",
+      "version": "v1",
+      "typeName": "EngineReadiness",
+      "fields": 5,
+      "path": "schemas/ipc/v1/engine-readiness.schema.json"
+    },
+    {
+      "id": "mirae://ipc/v1/protocol-version",
+      "title": "Protocol version",
+      "domain": "ipc",
+      "version": "v1",
+      "typeName": "ProtocolVersion",
+      "fields": 2,
+      "path": "schemas/ipc/v1/protocol-version.schema.json"
+    }
+  ]
 }

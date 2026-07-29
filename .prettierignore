@@ -11,6 +11,10 @@ pnpm-lock.yaml
 Cargo.lock
 schemas/generated/
 
+# Written by `cargo xtask generate` and verified by `--check`, which is the only
+# authority on their content. Prettier would reflow them and fight the generator.
+**/generated.ts
+
 # A generated representation of packages/ui-kit/tokens/design-tokens.v1.json.
 # `cargo xtask generate` will own its formatting; reformatting it here would put
 # the committed file permanently out of step with its generator.

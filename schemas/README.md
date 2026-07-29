@@ -11,7 +11,15 @@ ADR-0057.
 
 ```text
 <domain>/v<major>/<name>.schema.json    canonical source, hand-authored
-generated/                              generated output, verified in CI
+generated/manifest.json                 generated index of every contract
+```
+
+Language bindings are generated into the crate and package that own them, so each
+generated file has one declared owner (`805` invariant 4):
+
+```text
+crates/foundation/contracts/src/generated.rs   Rust bindings   (mirae-contracts)
+packages/contracts/src/generated.ts            TypeScript      (@mirae/contracts)
 ```
 
 The canonical domains from `805` section 2, each with a major-version directory:
@@ -51,7 +59,29 @@ The pipeline validates every schema, rejects duplicate ids, renders deterministi
 output sorted by id, then writes or verifies it. `--check` runs in CI, so drift
 fails the build (`805` section 5).
 
-No schemas are defined yet. `MIR-0006` adds the first contract: the engine and
-shell protocol version and readiness messages. The generated files are still
-written and verified today, so the drift gate exists before there is a contract to
-drift.
+## Supported schema subset
+
+Deliberately narrow, so a schema cannot express something the generators would
+silently drop:
+
+- a top-level `object` with `"additionalProperties": false`;
+- properties of type `integer` (with a `maximum`, optionally a `const`), `string`
+  (with either `enum` or a `maxLength`), or `boolean`;
+- `required` naming declared properties only;
+- a `description` on the document and on every property, because generated code is
+  documented.
+
+Anything else is rejected with the property named. `$ref`, composition, and nested
+objects are not supported yet; the first contract that needs one extends the
+generator.
+
+## Contracts today
+
+| Id | Type | Purpose |
+|---|---|---|
+| `mirae://ipc/v1/protocol-version` | `ProtocolVersion` | negotiated major and minor version |
+| `mirae://ipc/v1/engine-readiness` | `EngineReadiness` | engine lifecycle state, session id, safe detail |
+
+Both come from `docs/01-runtime/108-ipc-protocol.md` sections 6 and 8. Generated
+string bounds are exported as constants so decoding can reject oversized input
+before allocating for it (section 9).

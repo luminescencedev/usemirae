@@ -118,7 +118,39 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
   - follow-up: MIR-0006 adds the first real contract (protocol version and
     readiness) and full JSON Schema validation; fixture generation from doc 805
     section 4 point 4 is not implemented yet
-- [ ] MIR-0006 — Generate Rust and TypeScript handshake contracts
+- [x] MIR-0006 — Generate Rust and TypeScript handshake contracts
+  - status: done
+  - branch: `main` (trunk-based; no pull request)
+  - schemas: `mirae://ipc/v1/protocol-version` (major `const 1`, minor `const 0`)
+    and `mirae://ipc/v1/engine-readiness` (state enum, protocol major and minor,
+    bounded session id, optional safe detail), both from doc 108 sections 6 and 8
+  - generator: `schema.rs` now parses properties into a typed model and emits real
+    Rust structs, enums with stable wire strings, constants, and length bounds,
+    plus matching TypeScript interfaces, union types, and constants. A
+    hand-written JSON parser (`json.rs`) and identifier conversions (`naming.rs`)
+    back it; no dependency was added.
+  - ownership: bindings are generated into
+    `crates/foundation/contracts/src/generated.rs` and
+    `packages/contracts/src/generated.ts`, the crate and package that own them per
+    docs 802 and 803, rather than a shared directory
+  - validation: `cargo xtask check` (exit 0), `cargo test --package xtask`
+    (89 tests), `cargo test --package mirae-contracts` (6 tests),
+    `pnpm --filter @mirae/contracts test` (6 tests), `pnpm -r typecheck`,
+    `pnpm -r build`, `pnpm install --frozen-lockfile` — all exit 0
+  - cross-language agreement: the Rust and TypeScript suites assert the same
+    facts, and an xtask test checks that every field appears in both outputs with
+    matching optionality
+  - notes: generated Rust output is rustfmt-clean, verified by running
+    `cargo fmt --all` and confirming `generate --check` still passes; generated
+    TypeScript is excluded from prettier and ESLint because `--check` is the only
+    authority on its content. The supported schema subset is documented and
+    enforced: a property without a `description`, an integer without a `maximum`,
+    a string without `maxLength` or `enum`, or a document without
+    `"additionalProperties": false` is rejected with the property named.
+  - follow-up: `$ref`, composition, and nested objects are unsupported; no
+    serialization derive exists yet, since serde would need the Rust dependency
+    procedure in `DEPENDENCY_VERSIONS.md` section 11 (MIR-0012 needs it);
+    protocol fixtures and validators from doc 805 section 3 are not generated
 - [ ] MIR-0007 — Create structured error foundation
 - [ ] MIR-0008 — Create structured tracing foundation
 - [ ] MIR-0009 — Build engine process skeleton

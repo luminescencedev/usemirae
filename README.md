@@ -42,35 +42,31 @@ npm, Yarn, Bun, and Deno are not project package managers.
 Verify the local toolchain at any time:
 
 ```bash
-pnpm run check:toolchain
+cargo xtask bootstrap
 ```
 
-The same check runs as the root `preinstall` hook, so a wrong Rust, Node, or pnpm
-version fails before any dependency is fetched. It reports the expected version,
-the found version, and the command that fixes it. To install without the gate,
-use `pnpm install --ignore-scripts`. See
-[`tools/toolchain-check/README.md`](tools/toolchain-check/README.md).
+It also runs as the root `preinstall` hook, so a wrong Rust, Node, or pnpm version
+fails before any dependency is fetched. It reports the expected version, the found
+version, and the command that fixes each problem, and it changes nothing. To
+install without the gate, use `pnpm install --ignore-scripts`.
 
 ## Bootstrap
 
 ```bash
-# 1. Rust workspace — 30 library crates and 3 application crates
+# 1. Verify the toolchain (also runs automatically before any pnpm install)
+cargo xtask bootstrap
+
+# 2. Rust workspace — 30 library crates, 3 application crates, xtask
 cargo check --workspace
 
-# 2. Frontend workspace — 6 packages and the control UI
+# 3. Frontend workspace — 6 packages and the control UI
 pnpm install --frozen-lockfile
 
 # Playwright is owned by apps/control-ui, so its binary is not on the root path
 pnpm --filter @mirae/control-ui exec playwright install
 
-# 3. Verify both workspaces
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace
-pnpm -r typecheck
-pnpm -r lint
-pnpm -r test
-pnpm -r build
+# 4. Verify everything
+cargo xtask check
 ```
 
 External versions live in the pnpm catalog. Package manifests reference them as
@@ -82,16 +78,26 @@ Run the control UI on its own:
 pnpm --filter @mirae/control-ui dev
 ```
 
-Once `MIR-0003` lands, `cargo xtask` becomes the canonical command surface:
+## Commands
+
+`cargo xtask` is the canonical command surface. Run `cargo xtask help` for the
+full list, or `cargo xtask help <command>` for one command.
 
 ```text
-cargo xtask bootstrap
-cargo xtask generate --check
-cargo xtask fmt --check
-cargo xtask lint
-cargo xtask test-affected
-cargo xtask docs --check
+cargo xtask bootstrap           verify the pinned toolchain
+cargo xtask generate [--check]  run code generation, or fail on drift
+cargo xtask fmt [--check]       format, or fail if formatting is needed
+cargo xtask lint                lint with warnings denied
+cargo xtask test                every test in both workspaces
+cargo xtask test-affected       the tests affected by the working tree
+cargo xtask test-integration    cross-cutting tests under tests/
+cargo xtask docs [--check]      validate documentation structure
+cargo xtask check               generate --check, fmt --check, lint, test, docs
 ```
+
+Each command states what it does not yet cover and which ticket owns the rest, so
+a passing run never implies more coverage than exists. The frontend commands stay
+available through pnpm filters.
 
 ## Continuous integration
 

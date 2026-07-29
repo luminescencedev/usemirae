@@ -1,6 +1,12 @@
 [workspace]
 resolver = "3"
-members = ["apps/desktop-shell", "apps/engine", "apps/extension-host", "crates/*/*"]
+members = [
+    "apps/desktop-shell",
+    "apps/engine",
+    "apps/extension-host",
+    "crates/*/*",
+    "tools/xtask",
+]
 
 [workspace.package]
 version = "0.0.0"

@@ -36,7 +36,30 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
     lint jobs; MIR-DEPS-0001 covers the ESLint 10 peer conflict;
     MIR-TOOLING-0001 moves the GitHub actions off the deprecated Node 20 runtime
     (`@v5` needs pnpm available before `setup-node`, see the workflow header)
-- [ ] MIR-0003 — Add `xtask`
+- [x] MIR-0003 — Add `xtask`
+  - status: done
+  - branch: `main` (trunk-based; no pull request)
+  - commands: `bootstrap`, `generate [--check]`, `fmt [--check]`, `lint`, `test`,
+    `test-affected`, `test-integration`, `docs [--check]`, `check`, plus
+    `help [command]` for every one of them
+  - validation: `cargo xtask check` (exit 0), `cargo test --package xtask`
+    (44 tests), `cargo fmt --all -- --check`, `cargo clippy --workspace
+    --all-targets --all-features -- -D warnings`, `pnpm install --frozen-lockfile`
+    (preinstall now runs `cargo xtask bootstrap`), `pnpm -r typecheck`,
+    `pnpm -r test`, `pnpm -r build` — all exit 0
+  - negative test: a deliberately wrong `rust-toolchain.toml` channel made
+    `cargo xtask bootstrap` exit 1 and report both `rustc` and `cargo` with fixes
+  - notes: `tools/toolchain-check` was deleted and its rules ported to
+    `tools/xtask`, so the temporary duplicate from MIR-0002 is gone. `xtask` has
+    no dependencies: an argument parser would have to clear the Rust dependency
+    procedure in `DEPENDENCY_VERSIONS.md` section 11. `cargo xtask docs --check`
+    validates 224 SUMMARY links and that all 66 ADRs are indexed exactly once.
+    Every command states what it does not yet cover and which ticket owns the
+    rest, so a pass never implies more coverage than exists.
+  - follow-up: MIR-0004 (policy checks, ESLint and prettier configuration,
+    affected-set detection), MIR-0005/MIR-0006 (register generators),
+    MIR-0014 (extend `docs --check`), MIR-0015 (`test-integration` harness);
+    `package` and `dev` commands from doc 806 remain unimplemented
 - [ ] MIR-0004 — Add repository policy checks
 - [ ] MIR-0005 — Create canonical schema skeleton
 - [ ] MIR-0006 — Generate Rust and TypeScript handshake contracts

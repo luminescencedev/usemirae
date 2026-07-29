@@ -13,11 +13,14 @@
 #   - repository policy and secret scan .......... MIR-0004
 #   - TypeScript lint (ESLint flat config) ....... MIR-0004
 #   - schema and codegen drift ................... MIR-0005, MIR-0006
-#   - documentation links and structure .......... MIR-0014
 #   - integration tests .......................... MIR-0015
 #   - architecture dependency checks ............. MIR-0004
 #   - macOS builds, packaging, benchmarks ........ later sprints
-# Once MIR-0003 lands, these steps become `cargo xtask` invocations.
+#
+# Rust and documentation steps go through `cargo xtask` so CI cannot drift from
+# the local command surface. The frontend steps stay as pnpm filters: splitting by
+# language keeps the jobs parallel, while `cargo xtask check` remains the local
+# one-shot that runs everything in sequence.
 #
 # The actions are intentionally pinned to @v4. Every job is annotated with a
 # Node 20 deprecation warning, but @v5 of setup-node resolves
@@ -61,7 +64,9 @@ jobs:
       # first cargo invocation inside the repository.
       - run: cargo --version
 
-      - run: pnpm run check:toolchain
+      - run: cargo xtask bootstrap
+
+      - run: cargo xtask docs --check
 
   rust:
     name: Rust (${{ matrix.os }})
@@ -76,9 +81,9 @@ jobs:
 
       - run: cargo --version
 
-      - run: cargo fmt --all -- --check
+      - run: cargo xtask fmt --check
 
-      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - run: cargo xtask lint
 
       - run: cargo test --workspace
 

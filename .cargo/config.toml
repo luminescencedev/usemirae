@@ -1,0 +1,3 @@
+[alias]
+# One repository automation entry point (docs/08-development/806 section 4).
+xtask = "run --quiet --package xtask --"

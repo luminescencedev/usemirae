@@ -1,0 +1,15 @@
+[package]
+name = "xtask"
+description = "Single repository automation entry point invoked as `cargo xtask`."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+# This crate deliberately has no dependencies. An argument parser would have to
+# go through the Rust dependency procedure in `DEPENDENCY_VERSIONS.md` section 11
+# (justification, exact pin, license and security review) for a command surface
+# small enough to parse by hand. Revisit only if the surface outgrows it.
+
+[lints]
+workspace = true

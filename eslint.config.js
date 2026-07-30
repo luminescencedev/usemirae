@@ -3,6 +3,7 @@
 // Canonical documentation:
 // - docs/08-development/807-code-conventions.md (section 3, TypeScript/React)
 // - docs/08-development/804-dependency-rules.md (forbidden-import rules)
+// - docs/09-ui-ux/911-ui-library-decisions.md (UI primitive boundary)
 //
 // Versions come from DEPENDENCY_VERSIONS.md section 8. Run through
 // `cargo xtask lint` so local and CI linting cannot drift.
@@ -86,8 +87,8 @@ export default tseslint.config(
   },
 
   {
-    // 803 section 6 and ADR-0066: the UI depends on client and contracts, never
-    // on engine crates or another app.
+    // 803 section 6, ADR-0066, and 911: the UI depends on client, contracts,
+    // and Mirae-owned components. Third-party primitives remain inside ui-kit.
     files: ["apps/control-ui/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [
@@ -98,6 +99,16 @@ export default tseslint.config(
               group: ["**/apps/*", "!**/apps/control-ui/**"],
               message:
                 "The control UI must not import another application (docs/08-development/804 section 3).",
+            },
+            {
+              group: [
+                "react-aria-components",
+                "react-aria-components/*",
+                "@base-ui/react",
+                "@base-ui/react/*",
+              ],
+              message:
+                "Feature code must import accessible controls from @mirae/ui-kit; primitive libraries are private implementation details (docs/09-ui-ux/911).",
             },
           ],
         },

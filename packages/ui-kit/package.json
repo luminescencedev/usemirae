@@ -16,12 +16,12 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@base-ui/react": "catalog:",
     "@dnd-kit/helpers": "catalog:",
     "@dnd-kit/react": "catalog:",
     "@hugeicons/core-free-icons": "catalog:",
     "@hugeicons/react": "catalog:",
     "motion": "catalog:",
+    "react-aria-components": "catalog:",
     "react-resizable-panels": "catalog:"
   },
   "peerDependencies": {

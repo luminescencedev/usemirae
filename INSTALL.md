@@ -247,7 +247,6 @@ Run these commands after the pnpm workspace and `apps/control-ui` package exist.
 
 ```bash
 pnpm --filter @mirae/control-ui add \
-  @base-ui/react \
   motion \
   @dnd-kit/react \
   @dnd-kit/helpers \
@@ -257,6 +256,11 @@ pnpm --filter @mirae/control-ui add \
   @hugeicons/react \
   @hugeicons/core-free-icons
 ```
+
+The accessible interaction foundation is not installed here. MIR-0118 made
+`react-aria-components` private to `@mirae/ui-kit`, so it belongs to that
+package's manifest and never to a feature application
+(`docs/09-ui-ux/911-ui-library-decisions.md`).
 
 ### Tailwind CSS v4 for Vite
 

@@ -30,7 +30,7 @@ Claude MUST NOT:
 - manually edit generated lockfiles or generated contracts;
 - add npm, Yarn, Bun, or Deno as an alternative project package manager;
 - use `framer-motion`; Mirae uses the `motion` package;
-- use Radix or shadcn as the public component layer; Mirae uses Base UI behind Mirae-owned components;
+- use Radix, shadcn, Base UI, or React Aria as a public component layer; Mirae exposes only `@mirae/ui-kit`, with React Aria Components as a private interaction foundation;
 - import UI primitives directly from feature code when a Mirae wrapper exists.
 
 Claude MUST:
@@ -88,11 +88,11 @@ Claude MUST NOT “correct” this pin to the latest TypeScript version.
 
 | Purpose | Package | Exact version | Public usage rule |
 |---|---|---:|---|
-| Accessible primitives | `@base-ui/react` | `1.6.0` | wrap in `@mirae/ui-kit` |
+| Accessible interaction foundation | `react-aria-components` | `1.19.0` | private to `@mirae/ui-kit`; no feature imports |
 | Motion and layout animation | `motion` | `12.42.2` | import through Mirae motion helpers where available |
-| Drag and drop | `@dnd-kit/react` | `0.5.0` | use Mirae patterns and keyboard equivalents |
-| Drag-and-drop helpers | `@dnd-kit/helpers` | `0.5.0` | internal to UI kit/patterns |
-| List virtualization | `@tanstack/react-virtual` | `3.14.8` | long lists only |
+| Freeform drag and drop | `@dnd-kit/react` | `0.5.0` | spatial interactions only; use Mirae patterns and keyboard equivalents |
+| Freeform drag-and-drop helpers | `@dnd-kit/helpers` | `0.5.0` | internal to UI kit and canvas patterns |
+| Specialized virtualization | `@tanstack/react-virtual` | `3.14.8` | use only when React Aria collection support is insufficient |
 | Resizable panels | `react-resizable-panels` | `4.12.2` | wrap behind Mirae workspace API |
 | Forms | `react-hook-form` | `7.83.0` | forms and temporary drafts only |
 | Icon React adapter | `@hugeicons/react` | `1.1.9` | import through Mirae `Icon` |
@@ -100,14 +100,35 @@ Claude MUST NOT “correct” this pin to the latest TypeScript version.
 
 ### UI stack decisions
 
-- Base UI is the primitive layer.
-- `@mirae/ui-kit` is the public component layer.
+- React Aria Components is the private accessible interaction foundation.
+- `@mirae/ui-kit` is the only public component layer.
+- Feature code must not import `react-aria-components` directly.
 - Tailwind and CSS variables provide styling.
 - Motion handles springs, shared layout, enter/exit, and gesture animation.
 - CSS transitions handle simple hover, focus, color, and opacity changes.
-- dnd-kit workflows require an equivalent keyboard workflow.
+- React Aria owns collection semantics and collection drag-and-drop.
+- dnd-kit is limited to freeform and spatial interactions such as canvas placement.
+- TanStack Virtual is a specialized fallback, not the default collection abstraction.
 - No feature may expose the API of `react-resizable-panels` directly.
 - Hugeicons are rendered through one Mirae icon component to control stroke, size, alignment, and accessibility.
+
+### React Aria Components review (MIR-0118)
+
+`react-aria-components 1.19.0` is licensed under Apache-2.0. It is an unstyled
+browser-side accessibility and interaction foundation, not a visual component
+system. It provides keyboard, focus, pointer, touch, screen-reader, collection,
+and internationalization behavior while leaving Mirae in control of styling and
+public component APIs.
+
+Security review: the package does not receive engine credentials and does not own
+IPC, filesystem, navigation, HTML injection, or process execution. It operates on
+React events and DOM accessibility behavior inside the already untrusted WebView
+boundary. Feature code cannot import it directly; the ESLint boundary keeps its
+surface inside `@mirae/ui-kit`.
+
+Replacement review: Base UI was present only as an unused dependency. No
+production source imported it, so this migration changes the dependency graph and
+canonical decision without requiring a runtime component rewrite.
 
 ---
 
@@ -194,7 +215,7 @@ catalog:
   "@types/react-dom": 19.2.3
   "@types/node": 24.13.3
 
-  "@base-ui/react": 1.6.0
+  react-aria-components: 1.19.0
   motion: 12.42.2
   "@dnd-kit/react": 0.5.0
   "@dnd-kit/helpers": 0.5.0
@@ -465,7 +486,7 @@ FFmpeg binding.
 ```json
 {
   "dependencies": {
-    "@base-ui/react": "catalog:",
+    "react-aria-components": "catalog:",
     "@dnd-kit/helpers": "catalog:",
     "@dnd-kit/react": "catalog:",
     "@hugeicons/core-free-icons": "catalog:",
@@ -565,7 +586,7 @@ pnpm --filter @mirae/control-ui add -D --save-exact \
 
 ```bash
 pnpm --filter @mirae/ui-kit add --save-exact \
-  @base-ui/react@1.6.0 \
+  react-aria-components@1.19.0 \
   motion@12.42.2 \
   @dnd-kit/react@0.5.0 \
   @dnd-kit/helpers@0.5.0 \

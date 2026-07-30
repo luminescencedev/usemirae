@@ -513,7 +513,104 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
     classification. Packaging must detect a missing WebView2 runtime and generate
     the attribution file from `Cargo.lock` (`509`).
 
-## Next Sprint — Sprint 1, Project Kernel
+## Sprint 1 — Project Kernel — COMPLETE
+
+Canonical scope: `docs/08-development/814-bootstrap-ticket-backlog.md`, Sprint 1.
+Roadmap phase: `813-implementation-roadmap.md` section 3.
+
+**Exit condition met.** An empty project can be created, saved, reopened, and
+recovered, and it is driven from the control window rather than from a test. The
+window writes a real canonically serialized file with a real integrity hash,
+verified by driving the running application on Windows.
+
+- [x] MIR-0101 — Implement typed IDs and generations
+  - identifiers are random UUIDs behind per-entity newtypes (ADR-0069), so a
+    `SceneId` cannot be passed where a `SourceId` belongs; generations are two
+    distinct types, and `next` saturates because a wrapped generation would make
+    an ancient value compare as newer and every consumer would believe it
+- [x] MIR-0102 — Implement state-store snapshot
+  - `Arc` snapshots with per-entity sharing (ADR-0070); a benchmark test holds
+    the ADR to its claim by making one edit against ten thousand entities
+- [x] MIR-0103 — Implement command envelope
+  - registered by `TypeId`, never by string; the validation order from `104`
+    section 5 is tested, so permission is checked before generation and an actor
+    that may not ask never learns whether it would have conflicted
+- [x] MIR-0104 — Implement transaction commit
+  - nesting is a borrow error rather than a runtime check; `prepare` builds
+    against a copy so a half-failed closure leaves nothing behind
+- [x] MIR-0105 — Publish domain events after commit
+  - `commit` returns events, so the bus cannot receive one early; a dropped
+    transaction publishes nothing because no path exists
+- [x] MIR-0106 — Implement the snapshot and patch protocol
+  - the equivalence test is load-bearing: a patched mirror equals one built from
+    the later snapshot, or a client that stayed connected diverges from one that
+    reconnected
+- [x] MIR-0107 — Define project schema v1
+  - ADR-0071 chose JSON with canonical serialization; the generator gained
+    `$ref` and bounded arrays, which the backlog predicted this ticket would need
+- [x] MIR-0108 — Implement empty-project creation
+  - creation is a command and a transaction; creating while another project is
+    open is refused rather than silently switching
+- [x] MIR-0109 — Implement atomic project save
+  - temporary file, flush, replace; external modification compared *before* the
+    replace; `sha2` cleared section 11 with its graph already in the lockfile
+- [x] MIR-0110 — Implement project open and validation
+  - a scene item pointing at a missing source is kept with a diagnostic: a
+    dangling reference is a repair, a silent deletion is not something a user can
+    undo
+- [x] MIR-0111 — Track dirty and saved generations
+  - derived from two generations rather than a flag; a commit during a save
+    leaves the project dirty afterwards, which is the case the type exists for
+- [x] MIR-0112 — Implement the recovery-store skeleton
+  - ADR-0072 put the root behind a parameter and path resolution in
+    `mirae-platform`; retention is bounded by count, bytes, and age, and pruning
+    never removes the newest
+- [x] MIR-0116 — Add the typed shell bridge
+  - the shell terminates messages rather than relaying frames, because a relay
+    would let a page put any frame on the engine socket and would have to inject
+    the credential `501` invariant 4 forbids crossing
+- [x] MIR-0113 — Drive create and save from the control window
+  - running it found a bug the tests could not: save failed because nothing
+    created the default directory
+- [x] MIR-0114 — Prove the save pipeline survives interruption
+  - stopped at each named fault point from `611` section 3; at no point does the
+    visible path hold something a reader would refuse
+- [x] MIR-0115 — Add the round-trip compatibility corpus
+  - fixtures are generated, so the regeneration diff *is* the compatibility
+    change
+
+### Decisions taken during the sprint
+
+- [x] ADR-0069 — Random UUIDs as the persisted entity identifier
+- [x] ADR-0070 — Arc snapshots with per-entity sharing
+- [x] ADR-0071 — JSON as the canonical project file encoding
+- [x] ADR-0072 — Recovery records in a caller-supplied directory
+
+### Validation
+
+`cargo xtask check` exit 0 on every one of the sixteen commits. Frontend
+`typecheck`, `test`, and `build` are inside it. The desktop application was run
+on Windows 11 and driven from the keyboard: engine connected, project created,
+project saved, and the resulting file inspected.
+
+### Known gaps, deliberate
+
+- **No migration fixture.** `v1` is the first schema version, so there is nothing
+  to migrate from. Recorded in `fixtures/project/v1/README.md` rather than faked.
+- **`projectState` returns no project content.** The engine serves none yet; the
+  bridge reports what the shell knows and refuses to invent the rest.
+- **No file chooser.** A first save goes to a real location under the application
+  data directory. A chooser changes one call.
+- **Only Windows was exercised on hardware.** macOS and Linux are covered by
+  compilation and by tests that need no window.
+
+### Follow-ups, each its own ticket
+
+Opening a project from the window, closing one, autosave scheduling on top of the
+recovery store, the undo history that `MIR-0104`'s records feed, and the
+remaining window roles from `501` section 5.
+
+## Sprint 1 plan, as written before the work
 
 Canonical scope: `docs/08-development/814-bootstrap-ticket-backlog.md`, Sprint 1.
 Roadmap phase: `813-implementation-roadmap.md` section 3.

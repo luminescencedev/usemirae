@@ -1,155 +1,514 @@
-# Mirae — Installation d'une machine de développement
+Mirae — Installer et migrer le développement vers un PC Windows dédié
 
-Guide pour préparer un PC Windows 11 à développer Mirae, de zéro.
+Statut : guide opérationnelProjet : luminescencedev/usemiraeObjectif : conserver le PC principal/de jeu intact et déplacer tout le développement natif Windows de Mirae sur une seconde machine.
 
-Compter environ **45 minutes**, dont beaucoup d'attente pendant les téléchargements.
+1. Ce que cette installation va faire
 
----
+La machine dédiée servira à :
 
-## 0. Avant de commencer : le point important
+compiler le moteur et le shell Rust ;
 
-Mirae est une application desktop Windows. La compiler produit en permanence des
-exécutables non signés (scripts de build, macros procédurales, binaires de test),
-que Windows doit pouvoir lancer.
+exécuter les scripts de build et macros procédurales Cargo ;
 
-**Smart App Control l'en empêche.** C'est une protection de Windows 11 qui refuse
-d'exécuter tout binaire non signé et sans réputation. Elle n'accepte aucune
-exclusion : ni par dossier, ni par fichier, ni par processus.
+lancer les tests Rust et TypeScript ;
 
-C'est pour cette raison qu'une machine dédiée au développement est préférable à un
-PC personnel : on désactive Smart App Control uniquement sur celle-là.
+développer la fenêtre native wry + tao ;
 
-Toutes les autres protections restent actives : Microsoft Defender, SmartScreen,
-la protection en temps réel, l'intégrité mémoire, le pare-feu.
+tester WebView2 et les futures API Windows ;
 
----
+utiliser Claude Code dans le dépôt ;
 
-## 1. Vérifier l'état de Smart App Control
+produire plus tard les builds Windows de Mirae.
 
-Ouvre PowerShell (pas besoin d'administrateur) et colle :
+Le PC principal reste inchangé :
 
-```powershell
-Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy" |
-    Select-Object VerifiedAndReputablePolicyState
-```
+Smart App Control peut y rester actif ;
 
-| Valeur | Signification | À faire |
-|---:|---|---|
-| `0` | désactivé | rien, passe à l'étape 3 |
-| `1` | **actif, en mode appliqué** | étape 2 |
-| `2` | mode évaluation | étape 2 par précaution |
-| clé absente | non pris en charge | rien, passe à l'étape 3 |
+aucun Build Tools, Rust ou Node n’a besoin d’y être installé pour Mirae ;
 
-## 2. Désactiver Smart App Control
+aucune exclusion de sécurité n’est nécessaire ;
 
-**Uniquement sur la machine de développement.**
+il peut seulement servir à consulter GitHub ou, plus tard, à piloter le PC dédié à distance.
 
-D'abord, vérifie que Windows est à jour, puis relève ta version :
+2. Pourquoi une machine dédiée est nécessaire
 
-```powershell
+Mirae compile continuellement des fichiers locaux non signés :
+
+build-script-build.exe ;
+
+DLL de macros procédurales ;
+
+exécutables de tests ;
+
+exécutables de doctests ;
+
+mirae-engine.exe ;
+
+mirae-shell.exe.
+
+Smart App Control peut bloquer ces fichiers avant leur première exécution.
+
+Les erreurs suivantes peuvent toutes provenir du même blocage Windows :
+
+could not execute process ... (never executed)
+
+Une stratégie de contrôle d'application a bloqué ce fichier.
+(os error 4551)
+
+can't find crate for `time_macros`
+
+La dernière erreur est trompeuse : la dépendance peut être présente et correctement compilée, mais Windows peut bloquer son chargement ou l’exécution d’un artefact intermédiaire.
+
+Microsoft indique que Smart App Control n’est pas recommandé sur une machine de développement, car tout mode autre que désactivé peut affecter négativement les outils de développement.
+
+Références officielles :
+
+Smart App Control FAQ :https://support.microsoft.com/windows/smart-app-control-frequently-asked-questions
+
+Vérifier la stratégie avec citool.exe :https://learn.microsoft.com/windows/apps/develop/smart-app-control/test-your-app-with-smart-app-control
+
+Configuration Rust sous Windows :https://learn.microsoft.com/windows/dev-environment/rust/setup
+
+Partie A — Sauvegarder le travail depuis l’ancien PC
+
+Cette partie se fait sur le PC actuel avant de passer à la nouvelle machine.
+
+3. Ouvrir le dépôt actuel
+
+cd "CHEMIN\VERS\usemirae"
+git status
+
+Ne supprime rien avant d’avoir poussé les changements.
+
+4. Créer une branche de transfert pour MIR-0016
+
+Si tu n’es pas déjà sur une branche MIR-0016 :
+
+git switch -c feat/MIR-0016-native-shell
+
+Si elle existe déjà :
+
+git switch feat/MIR-0016-native-shell
+
+5. Vérifier ce qui doit être transféré
+
+Les changements utiles peuvent notamment concerner :
+
+Cargo.toml
+Cargo.lock
+apps/desktop-shell/Cargo.toml
+apps/desktop-shell/src/main.rs
+DEPENDENCY_VERSIONS.md
+BOOTSTRAP_TICKETS.md
+SETUP.md
+docs/adr/ADR-0068-system-webview-desktop-shell.md
+
+Les versions retenues pour MIR-0016 doivent être :
+
+wry  = 0.55.1
+tao  = 0.35.3
+
+Vérifie les modifications :
+
+git status --short
+git diff
+
+6. Ne pas transférer les fichiers propres à l’ancien PC
+
+Ne commit pas et ne copie pas :
+
+target/
+node_modules/
+.env
+.env.*
+*.log
+mir0016-build.log
+mir0016-tree.txt
+
+Ne transfère pas non plus une configuration Cargo machine-locale qui contiendrait par exemple :
+
+[build]
+target-dir = "C:\\mirae-target"
+
+Le fichier canonique du dépôt .cargo/config.toml ne doit contenir que les réglages réellement partagés par tous les développeurs, notamment l’alias xtask.
+
+Vérifie où se trouvent les configurations Cargo éventuellement héritées :
+
+Get-ChildItem -Path .. -Filter config.toml -Recurse -Force -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -match "\\.cargo\\" }
+
+7. Committer la branche de transfert
+
+Ajoute uniquement les fichiers utiles :
+
+git add Cargo.toml Cargo.lock
+git add apps/desktop-shell
+git add DEPENDENCY_VERSIONS.md BOOTSTRAP_TICKETS.md
+git add SETUP.md
+
+Ajoute les autres fichiers uniquement s’ils font réellement partie de MIR-0016.
+
+Contrôle le commit avant de le créer :
+
+git diff --cached
+
+Puis :
+
+git commit -m "wip(MIR-0016): prepare native window dependencies"
+git push -u origin feat/MIR-0016-native-shell
+
+Un commit WIP sur une branche dédiée est préférable à une copie manuelle du dossier : Git conserve exactement les fichiers nécessaires et exclut les artefacts compilés.
+
+Si aucun changement MIR-0016 n’est encore prêt, pousse au minimum ce guide sur une branche dédiée.
+
+8. Vérifier que la branche est bien distante
+
+git status
+git branch -vv
+git log -1 --oneline
+
+La branche doit afficher un suivi vers :
+
+origin/feat/MIR-0016-native-shell
+
+À partir de ce moment, le second PC peut reprendre le travail sans copier le dossier local.
+
+Partie B — Préparer le nouveau PC Windows
+
+9. Préparation recommandée
+
+Prévois :
+
+Windows 11 64 bits à jour ;
+
+un compte administrateur local ;
+
+au moins 40 à 60 Go d’espace libre ;
+
+une connexion Internet stable ;
+
+idéalement un SSD ;
+
+l’accès à ton compte GitHub ;
+
+l’accès à ton compte Claude.
+
+Crée un point de restauration Windows avant de modifier les paramètres de sécurité :
+
+Menu Démarrer
+→ Rechercher « Créer un point de restauration »
+→ Protection du système
+→ Créer
+
+Nom recommandé :
+
+Avant environnement Mirae
+
+10. Mettre Windows à jour
+
+Paramètres
+→ Windows Update
+→ Rechercher des mises à jour
+
+Installe toutes les mises à jour disponibles, puis redémarre.
+
+Vérifie la version :
+
 Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" |
     Select-Object DisplayVersion, CurrentBuild, UBR
-```
 
-À partir des builds `26100.7701` et `26200.7701`, Smart App Control peut être
-**réactivé** ensuite sans réinstaller Windows. En dessous, la désactivation est
-définitive : il faudrait réinitialiser Windows pour le rallumer.
+La documentation actuelle de Microsoft indique que les versions récentes de Windows peuvent réactiver Smart App Control depuis l’application Sécurité Windows. Cette possibilité dépend toutefois de l’état de mise à jour de la machine : mets Windows complètement à jour avant de changer le réglage.
 
-Ensuite :
+11. Vérifier précisément Smart App Control
 
-```text
+Méthode visuelle
+
 Sécurité Windows
-  → Contrôle des applications et du navigateur
-    → Paramètres de Smart App Control
-      → Désactivé
-```
+→ Contrôle des applications et du navigateur
+→ Paramètres de Smart App Control
 
-Redémarre, puis contrôle que la valeur est bien passée à `0` avec la commande de
-l'étape 1.
+Vérification de la stratégie réellement appliquée
 
-> Ne modifie jamais cette clé de registre à la main. Microsoft précise que cela
-> peut laisser le système dans un état incohérent. Passe par l'interface.
+Ouvre PowerShell et lance :
 
----
+citool.exe -lp
 
-## 3. Installer les outils
+Cherche :
 
-### Git
+Friendly Name: VerifiedAndReputableDesktop
+Is Currently Enforced: true
 
-<https://git-scm.com/download/win> — installeur par défaut.
+Cette combinaison signifie que Smart App Control est appliqué.
 
-### Visual Studio Build Tools
+Le mode évaluation apparaît généralement comme :
 
-Nécessaire : Rust utilise l'éditeur de liens MSVC sous Windows.
+Friendly Name: VerifiedAndReputableDesktopEvaluation
+Is Currently Enforced: true
 
-<https://visualstudio.microsoft.com/visual-cpp-build-tools/>
+Si tu vois une autre stratégie appliquée, surtout sur un PC professionnel ou géré par une organisation, ne la désactive pas : il peut s’agir d’une politique App Control/WDAC administrée.
 
-Dans l'installeur, coche **« Développement Desktop en C++ »**. C'est plusieurs
-gigaoctets ; c'est normal.
+12. Désactiver Smart App Control uniquement sur le PC dédié
 
-### Rust
+À faire uniquement si la machine est personnelle et réservée au développement.
 
-<https://rustup.rs> — lance `rustup-init.exe`, installation par défaut.
+Sécurité Windows
+→ Contrôle des applications et du navigateur
+→ Paramètres de Smart App Control
+→ Désactivé
 
-La bonne version de Rust s'installera toute seule au premier build : le dépôt
-contient un `rust-toolchain.toml` qui l'impose.
+Redémarre ensuite la machine.
 
-### Node.js
+Ne modifie pas directement les clés de registre de Smart App Control.
 
-Installe **nvm for Windows** : <https://github.com/coreybutler/nvm-windows/releases>
+Cette opération ne désactive pas :
 
-Puis, dans un PowerShell **administrateur** :
+Microsoft Defender Antivirus ;
 
-```powershell
-nvm install 24.18.1
+la protection en temps réel ;
+
+SmartScreen ;
+
+le pare-feu Windows ;
+
+l’intégrité mémoire ;
+
+Windows Update.
+
+Ne crée pas d’exclusion Defender pour le dossier du projet par défaut. Le but est uniquement de retirer le blocage App Control incompatible avec les exécutables générés localement, pas de réduire les autres protections.
+
+Après redémarrage :
+
+citool.exe -lp
+
+Vérifie que VerifiedAndReputableDesktop n’apparaît plus comme stratégie actuellement appliquée.
+
+Partie C — Installer les outils de développement
+
+13. Installer Git for Windows
+
+Téléchargement :
+
+https://git-scm.com/download/win
+
+Les options par défaut conviennent.
+
+Ferme puis rouvre PowerShell après l’installation.
+
+Vérifie :
+
+git --version
+
+Configure ton identité Git :
+
+git config --global user.name "Arthur Garnier"
+git config --global user.email "TON_EMAIL_GITHUB"
+git config --global core.autocrlf true
+git config --global core.longpaths true
+
+N’utilise pas l’adresse EFREI si elle n’est pas associée à ton compte GitHub. Utilise l’adresse que tu veux voir apparaître dans les commits ou ton adresse GitHub privée noreply.
+
+14. Installer les Microsoft C++ Build Tools
+
+Rust avec la cible MSVC a besoin de l’éditeur de liens et du SDK Windows.
+
+Téléchargement officiel :
+
+https://visualstudio.microsoft.com/downloads/
+
+Dans Tools for Visual Studio, installe Build Tools for Visual Studio.
+
+Dans l’installateur, sélectionne :
+
+Développement Desktop en C++
+
+Vérifie dans les détails d’installation que sont inclus :
+
+MSVC Build Tools x64/x86 ;
+
+Windows 11 SDK ;
+
+MSBuild ;
+
+C++ core desktop features.
+
+Il n’est pas nécessaire d’installer l’IDE Visual Studio complet si tu utilises un autre éditeur.
+
+Redémarre Windows après l’installation si l’installateur le demande.
+
+15. Installer Rust avec rustup
+
+Méthode officielle :
+
+https://rustup.rs
+
+Ou avec WinGet :
+
+winget install --id Rustlang.Rustup -e
+
+Ferme puis rouvre PowerShell.
+
+Vérifie :
+
+rustup --version
+rustc --version
+cargo --version
+
+Le dépôt contient rust-toolchain.toml et installera automatiquement :
+
+Rust 1.97.1
+clippy
+rustfmt
+rust-src
+
+Il n’est pas nécessaire de forcer manuellement cette version avant d’avoir cloné le dépôt.
+
+16. Installer NVM for Windows et Node.js
+
+Le dépôt impose exactement :
+
+Node.js 24.18.1
+
+Installe NVM for Windows depuis :
+
+https://github.com/coreybutler/nvm-windows/releases
+
+Sur une machine propre, n’installe pas Node séparément avant NVM.
+
+Après installation, ouvre PowerShell en administrateur :
+
+nvm install 24.18.1 64
 nvm use 24.18.1
-```
 
-La version exacte est imposée par le fichier `.node-version` du dépôt.
+Ferme puis rouvre le terminal.
 
-### pnpm
+Vérifie :
 
-pnpm s'active tout seul via corepack, qui est fourni avec Node :
+node --version
+npm --version
+nvm current
 
-```powershell
+Résultat attendu pour Node :
+
+v24.18.1
+
+Si node --version affiche une autre version :
+
+where.exe node
+nvm debug
+
+Un ancien Node installé séparément peut prendre la priorité dans le PATH.
+
+17. Activer pnpm avec Corepack
+
+Le dépôt impose exactement :
+
+pnpm 11.17.0
+
+Dans PowerShell :
+
 corepack enable
-```
+corepack prepare pnpm@11.17.0 --activate
 
-La version exacte vient du champ `packageManager` du `package.json`.
+Vérifie :
 
-### WebView2
-
-Déjà présent sur Windows 11 à jour. Rien à faire.
-
----
-
-## 4. Récupérer le projet
-
-Choisis un chemin **court et sans espaces** ni caractères accentués. Les chemins
-longs posent encore des problèmes à certains outils Windows.
-
-```powershell
-mkdir C:\dev
-cd C:\dev
-git clone https://github.com/luminescencedev/usemirae.git
-cd usemirae
-```
-
----
-
-## 5. Vérifier la chaîne d'outils
-
-```powershell
-cargo xtask bootstrap
-```
-
-Cette commande compare Rust, Node et pnpm aux versions imposées par le dépôt. En
-cas d'écart, elle affiche la version attendue, la version trouvée, et la commande
-exacte qui corrige le problème.
+pnpm --version
 
 Résultat attendu :
 
-```text
+11.17.0
+
+N’installe pas pnpm globalement avec npm install -g pnpm, sauf si Corepack est réellement indisponible et qu’un ticket de tooling le documente.
+
+18. Installer Claude Code
+
+Claude Code fonctionne nativement sous Windows avec Git for Windows.
+
+Installation :
+
+npm install -g @anthropic-ai/claude-code
+
+Vérification :
+
+claude --version
+claude doctor
+
+Lance une première fois :
+
+claude
+
+Suis le parcours de connexion avec ton compte Claude.
+
+Si Claude Code ne trouve pas Git Bash :
+
+$env:CLAUDE_CODE_GIT_BASH_PATH = "C:\Program Files\Git\bin\bash.exe"
+[Environment]::SetEnvironmentVariable(
+    "CLAUDE_CODE_GIT_BASH_PATH",
+    "C:\Program Files\Git\bin\bash.exe",
+    "User"
+)
+
+Documentation officielle :
+
+https://docs.anthropic.com/en/docs/claude-code/getting-started
+
+Partie D — Récupérer Mirae sur le nouveau PC
+
+19. Cloner dans un chemin court
+
+Utilise un chemin sans espace ni caractère accentué :
+
+New-Item -ItemType Directory -Path C:\dev -Force
+Set-Location C:\dev
+
+git clone https://github.com/luminescencedev/usemirae.git
+Set-Location C:\dev\usemirae
+
+Ne copie pas l’ancien dossier target/.
+
+Ne copie pas node_modules/.
+
+Ne copie pas le dossier .git/ à la main : le clone Git l’a déjà créé correctement.
+
+20. Récupérer la branche MIR-0016
+
+git fetch --all --prune
+git switch feat/MIR-0016-native-shell
+
+Si aucune branche distante MIR-0016 n’a été créée :
+
+git switch -c feat/MIR-0016-native-shell
+
+Mais dans ce cas, les changements non commités de l’ancien PC ne seront pas présents. Reviens à la Partie A et pousse-les d’abord.
+
+Vérifie :
+
+git status
+git log -3 --oneline
+
+21. Vérifier les fichiers de version
+
+Get-Content .node-version
+Get-Content rust-toolchain.toml
+Select-String -Path package.json -Pattern '"packageManager"|"node"|"pnpm"'
+
+Résultats attendus :
+
+Node.js 24.18.1
+pnpm 11.17.0
+Rust 1.97.1
+
+Ces valeurs sont définies dans le dépôt, pas dans ce guide.
+
+Partie E — Installer et valider le projet
+
+22. Vérifier la chaîne d’outils
+
+Depuis C:\dev\usemirae :
+
+cargo xtask bootstrap
+
+Résultat attendu :
+
 Mirae toolchain check
   ok   node   expected 24.18.1    found 24.18.1
   ok   pnpm   expected 11.17.0    found 11.17.0
@@ -157,112 +516,369 @@ Mirae toolchain check
   ok   cargo  expected 1.97.1     found 1.97.1
 
 Toolchain matches DEPENDENCY_VERSIONS.md.
-```
 
----
+Si la commande télécharge Rust 1.97.1 au premier lancement, c’est normal.
 
-## 6. Installer les dépendances et tout valider
+23. Installer les dépendances JavaScript
 
-```powershell
+pnpm install --frozen-lockfile
+
+Le script preinstall relance également la vérification du toolchain.
+
+N’utilise pas :
+
+npm install
+yarn
+bun install
+pnpm update --latest
+
+Le fichier pnpm-lock.yaml doit rester inchangé après une installation propre.
+
+24. Lancer la validation complète
+
+cargo xtask check
+
+Cette commande contrôle notamment :
+
+versions des outils ;
+
+politique du dépôt ;
+
+secrets et chemins machine-locaux ;
+
+dépendances et directions d’architecture ;
+
+contrats générés ;
+
+formatage ;
+
+Clippy ;
+
+ESLint ;
+
+tests Rust ;
+
+tests TypeScript ;
+
+documentation.
+
+Le premier lancement peut être long parce que toute la workspace Rust est compilée.
+
+25. Test décisif contre l’ancien blocage Windows
+
+Lance explicitement :
+
+cargo test --workspace
+
+Puis :
+
+cargo build --package mirae-shell
+
+Ces commandes doivent pouvoir :
+
+exécuter les scripts de build ;
+
+charger les macros procédurales ;
+
+lancer les binaires de tests ;
+
+produire le shell.
+
+Aucune erreur ne doit contenir :
+
+never executed
+os error 4551
+Une stratégie de contrôle d'application a bloqué ce fichier
+can't find crate for time_macros
+
+Si ces erreurs réapparaissent, consulte la section Dépannage avant de modifier les versions Cargo.
+
+Partie F — Lancer Mirae
+
+26. Lancer le moteur seul
+
+cargo run --package mirae-engine
+
+Le comportement exact dépend du mode de lancement. Le moteur peut publier son état de démarrage puis s’arrêter s’il n’est pas supervisé.
+
+27. Lancer le shell actuel
+
+Avant la fin de MIR-0016 :
+
+cargo run --package mirae-shell
+
+Le shell doit :
+
+localiser mirae-engine.exe ;
+
+lancer le moteur ;
+
+effectuer le handshake authentifié ;
+
+afficher une confirmation ;
+
+arrêter proprement le moteur puisqu’aucune fenêtre ne garde encore le shell ouvert.
+
+Exemple :
+
+handshake accepted: protocol=1.0 session=... max_frame=1048576 launches=1
+
+Après MIR-0016, la fenêtre native gardera l’event loop ouverte.
+
+28. Lancer l’interface React séparément
+
+pnpm --filter @mirae/control-ui dev
+
+Ouvre l’adresse locale indiquée par Vite.
+
+Tant que le pont shell ↔ interface n’est pas terminé, l’UI peut afficher que le moteur est indisponible. Ce comportement est volontaire : l’interface ne doit jamais simuler un état moteur qu’elle ne peut pas observer.
+
+Partie G — Reprendre MIR-0016 avec Claude Code
+
+29. Vérifications avant Claude
+
+git status
+cargo xtask check
+
+Le dépôt doit être propre ou ne contenir que les modifications volontairement liées à MIR-0016.
+
+30. Lancer Claude Code depuis le dépôt
+
+Set-Location C:\dev\usemirae
+claude
+
+Claude doit lire, dans cet ordre :
+
+CLAUDE.md
+DEPENDENCY_VERSIONS.md
+BOOTSTRAP_TICKETS.md
+SETUP.md
+docs/05-platform/501-desktop-shell.md
+docs/adr/ADR-0037-native-shell-replaceable-web-control-ui.md
+docs/adr/ADR-0068-system-webview-desktop-shell.md
+apps/desktop-shell/src/main.rs
+apps/desktop-shell/Cargo.toml
+Cargo.toml
+
+31. Prompt prêt à donner à Claude
+
+Continue MIR-0016 on the current branch.
+
+First read CLAUDE.md, DEPENDENCY_VERSIONS.md, BOOTSTRAP_TICKETS.md, SETUP.md,
+docs/05-platform/501-desktop-shell.md, ADR-0037, and ADR-0068.
+
+The development machine has been moved specifically because Smart App Control
+blocked locally compiled Rust executables on the previous PC. Do not change Cargo
+versions or dependency features to work around that old machine-level issue.
+
+Preserve the approved exact pair:
+- wry 0.55.1
+- tao 0.35.3
+
+Keep the existing engine process, supervisor, authenticated handshake, and Mirae
+IPC. Do not introduce Electron or Tauri.
+
+Implement the smallest complete MIR-0016 vertical slice:
+- create the Tao event loop and native window;
+- create the Wry system webview;
+- load locally packaged UI resources through the approved custom protocol;
+- deny arbitrary top-level navigation;
+- keep the bridge narrow and typed;
+- keep the engine supervised while the event loop is alive;
+- stop the engine cooperatively when the window closes;
+- add the required tests and diagnostics;
+- update the dependency review and ticket tracker;
+- run cargo xtask check.
+
+Do not merge. Stop after one reviewable MIR-0016 result and report every command
+run, its result, and any remaining gap.
+
+Partie H — Dépannage
+
+32. cargo xtask bootstrap indique une mauvaise version de Node
+
+nvm use 24.18.1
+node --version
+where.exe node
+nvm debug
+
+Si plusieurs installations Node existent, désinstalle l’installation MSI indépendante et laisse NVM gérer le symlink.
+
+33. pnpm est introuvable
+
+corepack enable
+corepack prepare pnpm@11.17.0 --activate
+pnpm --version
+
+Ferme et rouvre PowerShell si nécessaire.
+
+34. link.exe est introuvable
+
+Rouvre l’installateur Visual Studio Build Tools et vérifie :
+
+Développement Desktop en C++
+MSVC x64/x86
+Windows 11 SDK
+
+Puis redémarre le terminal.
+
+35. Erreur os error 4551 ou never executed
+
+Vérifie la stratégie :
+
+citool.exe -lp
+
+Puis examine les derniers blocages :
+
+Get-WinEvent -FilterHashtable @{
+    LogName = "Microsoft-Windows-CodeIntegrity/Operational"
+    Id      = 3077
+} -MaxEvents 20 |
+    Select-Object TimeCreated, Id, Message |
+    Format-List
+
+Si VerifiedAndReputableDesktop est toujours appliqué, Smart App Control n’est pas désactivé ou le redémarrage n’a pas finalisé le changement.
+
+Si le journal montre une autre politique, le PC est peut-être soumis à une stratégie WDAC/App Control différente. Ne modifie pas Cargo pour contourner une politique Windows.
+
+36. Erreur can't find crate for time_macros
+
+Commence par rechercher un événement Code Integrity 3077 au même moment.
+
+Ne rétrograde pas immédiatement time, cookie ou wry.
+
+Sur l’ancien PC, cette erreur était un effet secondaire du blocage d’exécution Windows.
+
+Si aucun événement de blocage n’existe sur la nouvelle machine :
+
+cargo clean
+Remove-Item Cargo.lock -Force
+cargo generate-lockfile
+cargo build --package mirae-shell -vv
+
+Ne régénère le lockfile que sur la branche MIR-0016 et contrôle le diff avant commit.
+
+37. WebView2 est absent
+
+Windows 11 à jour et les outils Visual Studio utilisent normalement WebView2.
+
+Si Wry signale explicitement l’absence du runtime, installe l’Evergreen Runtime officiel :
+
+https://developer.microsoft.com/microsoft-edge/webview2/
+
+Ne télécharge pas WebView2 depuis un site tiers.
+
+38. Le clone ne contient pas les changements MIR-0016
+
+git branch -a
+git fetch --all --prune
+git switch feat/MIR-0016-native-shell
+
+Si la branche distante n’existe pas, les changements étaient uniquement locaux sur l’ancien PC. Retourne à la Partie A et pousse-les.
+
+39. Le dépôt contient soudainement beaucoup de fichiers modifiés
+
+Vérifie :
+
+git status --short
+
+Causes fréquentes :
+
+node_modules ou target mal ignoré ;
+
+changement global de fins de ligne ;
+
+configuration Cargo locale commitée ;
+
+fichier généré modifié à la main ;
+
+commande de mise à jour de dépendances lancée sans ticket.
+
+N’exécute pas git add . avant d’avoir compris chaque groupe de fichiers.
+
+Partie I — Checklist finale
+
+Ancien PC
+
+Branche feat/MIR-0016-native-shell créée.
+
+Pins wry 0.55.1 et tao 0.35.3 sauvegardés.
+
+Cargo.lock sauvegardé si modifié.
+
+Aucun target/ ou node_modules/ commité.
+
+Aucune configuration Cargo machine-locale commitée.
+
+Branche poussée vers GitHub.
+
+Nouveau PC
+
+Windows complètement mis à jour.
+
+Point de restauration créé.
+
+Smart App Control vérifié avec citool.exe -lp.
+
+Smart App Control désactivé uniquement sur le PC dédié.
+
+Defender, SmartScreen, pare-feu et intégrité mémoire toujours actifs.
+
+Git installé.
+
+Build Tools avec « Développement Desktop en C++ » installé.
+
+Rustup installé.
+
+Node 24.18.1 actif.
+
+pnpm 11.17.0 actif.
+
+Claude Code installé et authentifié.
+
+Repo cloné dans C:\dev\usemirae.
+
+Branche MIR-0016 récupérée.
+
+cargo xtask bootstrap passe.
+
+pnpm install --frozen-lockfile passe.
+
+cargo xtask check passe.
+
+cargo test --workspace exécute réellement les tests.
+
+cargo build --package mirae-shell passe.
+
+Aucun événement Code Integrity 3077 lié aux artefacts Mirae.
+
+Claude peut reprendre MIR-0016 avec le prompt fourni.
+
+Résumé minimal des commandes sur le nouveau PC
+
+# Après installation de Git, Build Tools, rustup et NVM
+nvm install 24.18.1 64
+nvm use 24.18.1
+
+corepack enable
+corepack prepare pnpm@11.17.0 --activate
+
+npm install -g @anthropic-ai/claude-code
+
+New-Item -ItemType Directory -Path C:\dev -Force
+Set-Location C:\dev
+
+git clone https://github.com/luminescencedev/usemirae.git
+Set-Location C:\dev\usemirae
+
+git fetch --all --prune
+git switch feat/MIR-0016-native-shell
+
+cargo xtask bootstrap
 pnpm install --frozen-lockfile
 cargo xtask check
-```
 
-`cargo xtask check` enchaîne : politiques du dépôt, contrôle des contrats générés,
-formatage, lint, tests Rust et TypeScript, validation de la documentation.
+cargo test --workspace
+cargo build --package mirae-shell
 
-Le premier passage compile tout : compte **5 à 15 minutes**. Les suivants sont
-courts.
-
-Résultat attendu : la commande se termine sans erreur.
-
----
-
-## 7. Lancer l'application
-
-### Le moteur seul
-
-```powershell
-cargo run --package mirae-engine
-```
-
-Il affiche son état de démarrage en JSON, puis s'arrête.
-
-### Le shell qui supervise le moteur
-
-```powershell
-cargo run --package mirae-shell
-```
-
-Le shell lance le moteur, effectue le handshake authentifié, puis l'arrête
-proprement :
-
-```text
-handshake accepted: protocol=1.0 session=... max_frame=1048576 launches=1
-```
-
-### L'interface de contrôle
-
-```powershell
-pnpm --filter @mirae/control-ui dev
-```
-
-Ouvre l'adresse affichée dans un navigateur.
-
-> Il n'y a pas encore de fenêtre native : c'est le ticket MIR-0016. L'interface
-> affichera « Engine unavailable », ce qui est le comportement attendu tant que le
-> pont entre la fenêtre et le moteur n'existe pas.
-
----
-
-## 8. En cas de problème
-
-### « could not execute process ... (never executed) »
-
-### « Une stratégie de contrôle d'application a bloqué ce fichier (os error 4551) »
-
-### « can't find crate for `time_macros` »
-
-Ces trois messages ont la même cause : Smart App Control bloque les binaires
-compilés localement. Reprends les étapes 1 et 2.
-
-C'est particulièrement trompeur pour le troisième : l'erreur désigne une
-dépendance, alors que le vrai problème est que Windows a empêché l'exécution de la
-macro procédurale.
-
-### Les tests échouent alors que la compilation réussit
-
-Même cause. La compilation peut aboutir pendant que l'exécution des binaires de
-test est refusée.
-
-### Popup « Une partie de cette application a été bloquée »
-
-Ne l'ignore pas, contrairement à ce qu'on pourrait croire : c'est le symptôme du
-même blocage.
-
-### Les builds sont très lents
-
-Ajoute une exclusion Microsoft Defender pour le dossier `target` du dépôt. C'est
-une optimisation, sans rapport avec Smart App Control, et cela réduit la
-surveillance antivirus sur ce dossier : à toi de juger.
-
----
-
-## 9. Résumé des commandes utiles
-
-```powershell
-cargo xtask help              # toutes les commandes disponibles
-cargo xtask bootstrap         # vérifie la chaîne d'outils
-cargo xtask check             # validation complète, avant chaque commit
-cargo xtask fmt               # formate Rust et TypeScript
-cargo xtask test              # tous les tests
-cargo xtask docs --check      # valide la documentation
-```
-
-Documents de référence à la racine du dépôt :
-
-- `README.md` — vue d'ensemble et démarrage
-- `CLAUDE.md` — règles d'ingénierie
-- `DEPENDENCY_VERSIONS.md` — versions exactes, faisant autorité
-- `BOOTSTRAP_TICKETS.md` — état d'avancement des tickets
-- `docs/SUMMARY.md` — toute la documentation d'architecture
+claude

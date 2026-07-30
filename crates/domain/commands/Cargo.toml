@@ -6,5 +6,10 @@ edition.workspace = true
 rust-version.workspace = true
 publish = false
 
+[dependencies]
+# Identity and generations. A command names entities and the generation it was
+# written against; it reaches nothing above the domain (804 section 2).
+mirae-types = { path = "../../foundation/types" }
+
 [lints]
 workspace = true

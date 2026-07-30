@@ -23,7 +23,7 @@ snapshot/patch protocol a client mirrors. Testable without a window or a file.
 
 - [x] MIR-0101 — Implement typed IDs and generations
 - [x] MIR-0102 — Implement state-store snapshot
-- [ ] MIR-0103 — Implement command envelope
+- [x] MIR-0103 — Implement command envelope
 - [ ] MIR-0104 — Implement transaction commit
 - [ ] MIR-0105 — Implement event publication after commit
 - [ ] MIR-0106 — Implement state snapshot and patch protocol

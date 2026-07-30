@@ -1123,6 +1123,9 @@ version = "0.0.0"
 [[package]]
 name = "mirae-commands"
 version = "0.0.0"
+dependencies = [
+ "mirae-types",
+]
 
 [[package]]
 name = "mirae-contracts"

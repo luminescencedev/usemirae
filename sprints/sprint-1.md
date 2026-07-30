@@ -37,7 +37,7 @@ bounded recovery store.
 - [x] MIR-0108 — Implement empty-project creation
 - [x] MIR-0109 — Implement atomic project save
 - [x] MIR-0110 — Implement project open and validation
-- [ ] MIR-0111 — Implement dirty/saved generation tracking
+- [x] MIR-0111 — Implement dirty/saved generation tracking
 - [ ] MIR-0112 — Implement recovery-store skeleton
 
 ## Strand 3 — Visible

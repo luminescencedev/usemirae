@@ -1226,6 +1226,14 @@ version = "0.0.0"
 [[package]]
 name = "mirae-project"
 version = "0.0.0"
+dependencies = [
+ "mirae-commands",
+ "mirae-contracts",
+ "mirae-domain",
+ "mirae-state",
+ "mirae-types",
+ "serde_json",
+]
 
 [[package]]
 name = "mirae-render-graph"

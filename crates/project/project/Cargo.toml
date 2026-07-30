@@ -6,5 +6,19 @@ edition.workspace = true
 rust-version.workspace = true
 publish = false
 
+[dependencies]
+# The project layer maps domain state onto the generated schema and drives
+# creation through commands and transactions. It reaches nothing platform-shaped:
+# the filesystem arrives with MIR-0109, behind an interface this layer owns
+# (804 section 4).
+mirae-commands = { path = "../../domain/commands" }
+mirae-contracts = { path = "../../foundation/contracts" }
+mirae-domain = { path = "../../domain/domain" }
+mirae-state = { path = "../../domain/state" }
+mirae-types = { path = "../../foundation/types" }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
 [lints]
 workspace = true

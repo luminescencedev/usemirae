@@ -89,6 +89,11 @@ impl EventSequence {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum DomainEvent {
+    /// A project was created and is now the active one.
+    ProjectCreated {
+        /// The project.
+        project: EntityId,
+    },
     /// A scene was created.
     SceneCreated {
         /// The scene.
@@ -130,6 +135,7 @@ impl DomainEvent {
     #[must_use]
     pub const fn as_str(&self) -> &'static str {
         match self {
+            Self::ProjectCreated { .. } => "project_created",
             Self::SceneCreated { .. } => "scene_created",
             Self::SceneRemoved { .. } => "scene_removed",
             Self::SourceCreated { .. } => "source_created",
@@ -622,6 +628,7 @@ mod tests {
         let entity = EntityId::nil();
 
         for event in [
+            DomainEvent::ProjectCreated { project: entity },
             DomainEvent::SceneCreated { scene: entity },
             DomainEvent::SceneRemoved { scene: entity },
             DomainEvent::SourceCreated { source: entity },

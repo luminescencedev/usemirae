@@ -34,7 +34,7 @@ The schema, creation, atomic save, open and validation, dirty tracking, and a
 bounded recovery store.
 
 - [x] MIR-0107 — Define project schema v1
-- [ ] MIR-0108 — Implement empty-project creation
+- [x] MIR-0108 — Implement empty-project creation
 - [ ] MIR-0109 — Implement atomic project save
 - [ ] MIR-0110 — Implement project open and validation
 - [ ] MIR-0111 — Implement dirty/saved generation tracking

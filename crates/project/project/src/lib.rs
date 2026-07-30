@@ -9,19 +9,19 @@
 //!
 //! Creating an empty project through a command and a transaction, the explicit
 //! mapping from authoritative state onto the generated schema, canonical
-//! serialization with an integrity hash, and atomic save
-//! (`MIR-0107`, `MIR-0108`, `MIR-0109`).
+//! serialization with an integrity hash, atomic save, and opening a project with
+//! layered validation (`MIR-0107` through `MIR-0110`).
 //!
 //! # What does not
 //!
-//! Open and validation (`MIR-0110`), dirty tracking (`MIR-0111`), and the
-//! recovery store (`MIR-0112`). Filesystem access is confined to [`save`], so
-//! there is one place to look when the platform-specific parts of `403` section
-//! 4 need a real adapter.
+//! Dirty tracking (`MIR-0111`) and the recovery store (`MIR-0112`). Filesystem
+//! access is confined to [`save`] and [`open`], so there is one place to look
+//! when the platform-specific parts of `403` section 4 need a real adapter.
 
 pub mod canonical;
 pub mod create;
 pub mod mapping;
+pub mod open;
 pub mod save;
 
 pub use canonical::{CanonicalError, LINE_ENDING, integrity_matches, serialize_with_integrity};
@@ -29,8 +29,14 @@ pub use create::{
     CreateProject, CreatedProject, MAX_PROJECT_NAME_CHARACTERS, create_empty_project,
 };
 pub use mapping::{PROJECT_FORMAT, PROJECT_SCHEMA_VERSION, body_of, envelope_of};
+pub use open::{
+    Diagnostic, MAX_PROJECT_FILE_BYTES, OpenError, OpenMode, OpenedProject, open_document,
+    open_project,
+};
 pub use save::{Durability, FileIdentity, FilesystemFailure, SaveError, SaveResult, save_project};
 
+#[cfg(test)]
+mod open_tests;
 #[cfg(test)]
 mod save_tests;
 #[cfg(test)]

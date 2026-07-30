@@ -105,7 +105,8 @@ pub enum FilesystemFailure {
 
 impl FilesystemFailure {
     /// Classify an I/O error.
-    fn of(error: &std::io::Error) -> Self {
+    #[must_use]
+    pub fn of_io(error: &std::io::Error) -> Self {
         match error.kind() {
             std::io::ErrorKind::PermissionDenied => Self::PermissionDenied,
             std::io::ErrorKind::StorageFull | std::io::ErrorKind::QuotaExceeded => Self::OutOfSpace,
@@ -201,7 +202,7 @@ pub fn save_project(
 
     if let Err(error) = std::fs::rename(&temporary, path) {
         let _ = std::fs::remove_file(&temporary);
-        return Err(SaveError::Filesystem(FilesystemFailure::of(&error)));
+        return Err(SaveError::Filesystem(FilesystemFailure::of_io(&error)));
     }
 
     if durability == Durability::Strong {
@@ -229,16 +230,16 @@ fn write_temporary(
     bytes: &[u8],
     durability: Durability,
 ) -> Result<(), FilesystemFailure> {
-    let mut file = File::create(temporary).map_err(|error| FilesystemFailure::of(&error))?;
+    let mut file = File::create(temporary).map_err(|error| FilesystemFailure::of_io(&error))?;
 
     file.write_all(bytes)
-        .map_err(|error| FilesystemFailure::of(&error))?;
+        .map_err(|error| FilesystemFailure::of_io(&error))?;
 
     if durability != Durability::Fast {
         // `sync_all` rather than `flush`: flushing moves bytes out of the
         // process, which says nothing about whether they reached the disk.
         file.sync_all()
-            .map_err(|error| FilesystemFailure::of(&error))?;
+            .map_err(|error| FilesystemFailure::of_io(&error))?;
     }
 
     Ok(())

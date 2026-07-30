@@ -356,8 +356,9 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
     in doc 09-ui-ux/928. `@testing-library/jest-dom` is not approved, so one
     matcher is defined locally in the test setup.
 - [ ] MIR-0012 — Add authenticated IPC handshake
-  - blocked by: MIR-ADR-0001 (the wire format must be decided before the
-    handshake is encoded)
+  - unblocked: the wire format is decided in ADR-0067 (JSON inside the bounded
+    binary frame). This ticket clears serde and serde_json through
+    DEPENDENCY_VERSIONS.md section 11 and implements the handshake.
 - [ ] MIR-0013 — Add engine crash/restart smoke test
 - [ ] MIR-0014 — Add documentation link validator
 - [ ] MIR-0015 — Add first integration test harness
@@ -367,7 +368,24 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
 Raised by completed tickets. Each is a separate ticket rather than hidden scope
 (doc 812 invariant 7). None is started.
 
-### MIR-ADR-0001 — Decide the IPC serialization format
+### MIR-ADR-0001 — Decide the IPC serialization format — DECIDED
+
+Decided in **ADR-0067**: JSON payloads inside the bounded binary frame from doc 108
+section 4. Zero new TypeScript dependency, explicit optional fields, easy minor
+evolution, deterministic fixtures, and no decode-time code execution. The control
+plane carries no media, so the size and speed cost of JSON is acceptable, and the
+framing already carries a message type and version if a second payload encoding is
+ever negotiated.
+
+Still to do when `MIR-0012` implements it: clear `serde` and `serde_json` through
+`DEPENDENCY_VERSIONS.md` section 11 (exact pins, committed `Cargo.lock`, a Rust
+dependency section, licence and security review), emit serialization support from
+the generator, and add the round-trip, unknown-field, oversized-payload, and
+malformed-input tests the ADR requires.
+
+The original ticket text follows for the record.
+
+### MIR-ADR-0001 (original) — Decide the IPC serialization format
 
 ```text
 ID:                MIR-ADR-0001
@@ -427,6 +445,25 @@ Validation:        cargo xtask check, cargo xtask generate --check,
                    cargo test --workspace, pnpm -r test
 Deliverables:      the ADR, the dependency records, generator support, tests.
 ```
+
+### MIR-0016 — Host the control UI in a system webview — READY
+
+Decided in **ADR-0068**: the shell hosts the control UI in the operating system's
+own webview (WebView2, WKWebView, WebKitGTK) through the `wry` and `tao` crates,
+loading locally packaged resources over a custom protocol. Electron and Tauri stay
+rejected, by `DEPENDENCY_VERSIONS.md` section 14 and by the project owner.
+
+Scope: clear `wry` and `tao` through section 11 with a real review of their
+transitive graph; create the main control window from the shell that already
+supervises the engine; serve the built control UI bundle over a custom protocol;
+implement the navigation policy, permission restrictions, and content security
+policy from doc 501 sections 3 and 4 as part of this ticket rather than as
+follow-ups; and distinguish a webview failure from an engine failure in the UI
+(doc 501 section 10).
+
+Depends on MIR-0012 for the typed bridge to carry the authenticated handshake.
+Required tests come from doc 501 section 12: UI reload, navigation block, external
+link, and the fatal recovery flow.
 
 ### MIR-DEPS-0001 — Resolve the ESLint 10 peer declaration
 

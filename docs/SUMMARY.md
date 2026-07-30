@@ -257,3 +257,5 @@
 - [ADR-0064: Keyboard-Equivalent Drag and Drop](adr/ADR-0064-keyboard-equivalent-drag-and-drop.md)
 - [ADR-0065: Persistent Dockable Desktop Workspace](adr/ADR-0065-persistent-dockable-desktop-workspace.md)
 - [ADR-0066: Engine State and UI Drafts Remain Separate](adr/ADR-0066-engine-state-and-ui-drafts-remain-separate.md)
+- [ADR-0067: JSON Control-Plane Serialization](adr/ADR-0067-json-control-plane-serialization.md)
+- [ADR-0068: System Webview for the Desktop Shell](adr/ADR-0068-system-webview-desktop-shell.md)

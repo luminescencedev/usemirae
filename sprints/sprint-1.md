@@ -15,6 +15,7 @@ quietly inside a feature ticket is the failure this list prevents.
 - [x] ADR-0069 — Random UUIDs as the persisted entity identifier — gated MIR-0101
 - [x] ADR-0070 — Arc snapshots with per-entity sharing — gated MIR-0102
 - [x] ADR-0071 — JSON as the canonical project file encoding — gated MIR-0107
+- [x] ADR-0072 — Recovery records in a caller-supplied directory — gated MIR-0112
 
 ## Strand 1 — Kernel
 
@@ -38,7 +39,7 @@ bounded recovery store.
 - [x] MIR-0109 — Implement atomic project save
 - [x] MIR-0110 — Implement project open and validation
 - [x] MIR-0111 — Implement dirty/saved generation tracking
-- [ ] MIR-0112 — Implement recovery-store skeleton
+- [x] MIR-0112 — Implement recovery-store skeleton
 
 ## Strand 3 — Visible
 

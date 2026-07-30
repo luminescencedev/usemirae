@@ -119,6 +119,15 @@
       "typeName": "ProjectIntegrity",
       "fields": 2,
       "path": "schemas/project/v1/project-integrity.schema.json"
+    },
+    {
+      "id": "mirae://project/v1/recovery-record",
+      "title": "RecoveryRecord",
+      "domain": "project",
+      "version": "v1",
+      "typeName": "RecoveryRecord",
+      "fields": 7,
+      "path": "schemas/project/v1/recovery-record.schema.json"
     }
   ]
 }

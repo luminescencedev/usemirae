@@ -333,6 +333,45 @@ export interface ProjectIntegrity {
 /** Maximum accepted length of `contentHash`, for bounded decoding. */
 export const PROJECT_INTEGRITY_CONTENT_HASH_MAX_LENGTH = 128;
 
+/**
+ * RecoveryRecord.
+ *
+ * One autosaved snapshot, held separately from the canonical project file. It carries what recovery needs in order to classify a candidate on the next start: which project, which generation, when, and which explicit save it was based on (404 section 2).
+ *
+ * Canonical schema: `mirae://project/v1/recovery-record`.
+ */
+export interface RecoveryRecord {
+  /** Identifies this record, as a canonical hyphenated UUID. */
+  readonly recoveryId: string;
+  /** The project this record belongs to. Recovery candidates are located by this, not by path: a project that moved is still the same project. */
+  readonly projectId: string;
+  /** The committed generation this record holds. 404 invariant 2: only committed generations are recorded, never a half-built edit. */
+  readonly stateGeneration: number;
+  /** When the record was written, as an RFC 3339 timestamp. */
+  readonly recordedAt: string;
+  /** The content hash of the explicit save this record builds on, or empty when the project has never been saved. 404 section 6 compares it to tell a useful candidate from one belonging to a version the user has since replaced. */
+  readonly baseSaveHash: string;
+  /** The Mirae version that wrote the record, for diagnostics. */
+  readonly appVersion: string;
+  /** The project as it stood at that generation. */
+  readonly project: PersistedProjectEnvelope;
+}
+
+/** Maximum accepted length of `recoveryId`, for bounded decoding. */
+export const RECOVERY_RECORD_RECOVERY_ID_MAX_LENGTH = 36;
+
+/** Maximum accepted length of `projectId`, for bounded decoding. */
+export const RECOVERY_RECORD_PROJECT_ID_MAX_LENGTH = 36;
+
+/** Maximum accepted length of `recordedAt`, for bounded decoding. */
+export const RECOVERY_RECORD_RECORDED_AT_MAX_LENGTH = 64;
+
+/** Maximum accepted length of `baseSaveHash`, for bounded decoding. */
+export const RECOVERY_RECORD_BASE_SAVE_HASH_MAX_LENGTH = 128;
+
+/** Maximum accepted length of `appVersion`, for bounded decoding. */
+export const RECOVERY_RECORD_APP_VERSION_MAX_LENGTH = 32;
+
 /** Every contract id in this build, sorted. */
 export const CONTRACT_IDS = [
   "mirae://ipc/v1/engine-readiness",
@@ -347,4 +386,5 @@ export const CONTRACT_IDS = [
   "mirae://project/v1/persisted-source-definition",
   "mirae://project/v1/project-app-versions",
   "mirae://project/v1/project-integrity",
+  "mirae://project/v1/recovery-record",
 ] as const;

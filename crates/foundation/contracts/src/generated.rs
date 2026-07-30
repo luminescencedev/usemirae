@@ -481,8 +481,57 @@ impl ProjectIntegrityAlgorithm {
 /// Maximum accepted length of `contentHash`, for bounded decoding.
 pub const PROJECT_INTEGRITY_CONTENT_HASH_MAX_LENGTH: usize = 128;
 
+/// RecoveryRecord.
+///
+/// One autosaved snapshot, held separately from the canonical project file. It carries what recovery needs in order to classify a candidate on the next start: which project, which generation, when, and which explicit save it was based on (404 section 2).
+///
+/// Canonical schema: `mirae://project/v1/recovery-record`.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RecoveryRecord {
+    /// Identifies this record, as a canonical hyphenated UUID.
+    ///
+    /// Bounded to 36 characters by the schema.
+    pub recovery_id: String,
+    /// The project this record belongs to. Recovery candidates are located by this, not by path: a project that moved is still the same project.
+    ///
+    /// Bounded to 36 characters by the schema.
+    pub project_id: String,
+    /// The committed generation this record holds. 404 invariant 2: only committed generations are recorded, never a half-built edit.
+    pub state_generation: u64,
+    /// When the record was written, as an RFC 3339 timestamp.
+    ///
+    /// Bounded to 64 characters by the schema.
+    pub recorded_at: String,
+    /// The content hash of the explicit save this record builds on, or empty when the project has never been saved. 404 section 6 compares it to tell a useful candidate from one belonging to a version the user has since replaced.
+    ///
+    /// Bounded to 128 characters by the schema.
+    pub base_save_hash: String,
+    /// The Mirae version that wrote the record, for diagnostics.
+    ///
+    /// Bounded to 32 characters by the schema.
+    pub app_version: String,
+    /// The project as it stood at that generation.
+    pub project: PersistedProjectEnvelope,
+}
+
+/// Maximum accepted length of `recoveryId`, for bounded decoding.
+pub const RECOVERY_RECORD_RECOVERY_ID_MAX_LENGTH: usize = 36;
+
+/// Maximum accepted length of `projectId`, for bounded decoding.
+pub const RECOVERY_RECORD_PROJECT_ID_MAX_LENGTH: usize = 36;
+
+/// Maximum accepted length of `recordedAt`, for bounded decoding.
+pub const RECOVERY_RECORD_RECORDED_AT_MAX_LENGTH: usize = 64;
+
+/// Maximum accepted length of `baseSaveHash`, for bounded decoding.
+pub const RECOVERY_RECORD_BASE_SAVE_HASH_MAX_LENGTH: usize = 128;
+
+/// Maximum accepted length of `appVersion`, for bounded decoding.
+pub const RECOVERY_RECORD_APP_VERSION_MAX_LENGTH: usize = 32;
+
 /// Every contract id in this build, sorted.
-pub const CONTRACT_IDS: [&str; 12] = [
+pub const CONTRACT_IDS: [&str; 13] = [
     "mirae://ipc/v1/engine-readiness",
     "mirae://ipc/v1/hello",
     "mirae://ipc/v1/protocol-version",
@@ -495,4 +544,5 @@ pub const CONTRACT_IDS: [&str; 12] = [
     "mirae://project/v1/persisted-source-definition",
     "mirae://project/v1/project-app-versions",
     "mirae://project/v1/project-integrity",
+    "mirae://project/v1/recovery-record",
 ];

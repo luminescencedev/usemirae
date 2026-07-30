@@ -10,20 +10,22 @@
 //! Creating an empty project through a command and a transaction, the explicit
 //! mapping from authoritative state onto the generated schema, canonical
 //! serialization with an integrity hash, atomic save, opening a project with
-//! layered validation, and dirty tracking derived from generations
-//! (`MIR-0107` through `MIR-0111`).
+//! layered validation, dirty tracking derived from generations, and a bounded
+//! recovery store (`MIR-0107` through `MIR-0112`).
 //!
 //! # What does not
 //!
-//! The recovery store (`MIR-0112`). Filesystem
-//! access is confined to [`save`] and [`open`], so there is one place to look
-//! when the platform-specific parts of `403` section 4 need a real adapter.
+//! Autosave scheduling, which decides *when* a record is written; `MIR-0112`
+//! built the store it writes into. Filesystem access is confined to [`save`],
+//! [`open`], and [`recovery`], so there is one place to look when the
+//! platform-specific parts of `403` section 4 need a real adapter.
 
 pub mod canonical;
 pub mod create;
 pub mod dirty;
 pub mod mapping;
 pub mod open;
+pub mod recovery;
 pub mod save;
 
 pub use canonical::{CanonicalError, LINE_ENDING, integrity_matches, serialize_with_integrity};
@@ -36,10 +38,13 @@ pub use open::{
     Diagnostic, MAX_PROJECT_FILE_BYTES, OpenError, OpenMode, OpenedProject, open_document,
     open_project,
 };
+pub use recovery::{RecoveryCandidate, RecoveryError, RecoveryStore, RetentionPolicy};
 pub use save::{Durability, FileIdentity, FilesystemFailure, SaveError, SaveResult, save_project};
 
 #[cfg(test)]
 mod open_tests;
+#[cfg(test)]
+mod recovery_tests;
 #[cfg(test)]
 mod save_tests;
 #[cfg(test)]

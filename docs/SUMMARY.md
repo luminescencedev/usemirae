@@ -262,3 +262,4 @@
 - [ADR-0069: Random UUIDs as the Persisted Entity Identifier](adr/ADR-0069-entity-identifier-representation.md)
 - [ADR-0070: Arc Snapshots With Per-Entity Sharing](adr/ADR-0070-state-representation-arc-snapshots.md)
 - [ADR-0071: JSON as the Canonical Project File Encoding](adr/ADR-0071-project-file-encoding.md)
+- [ADR-0072: Recovery Records in a Caller-Supplied Directory](adr/ADR-0072-recovery-store-location.md)

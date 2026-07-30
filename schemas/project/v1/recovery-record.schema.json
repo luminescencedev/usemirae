@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mirae://project/v1/recovery-record",
+  "title": "RecoveryRecord",
+  "description": "One autosaved snapshot, held separately from the canonical project file. It carries what recovery needs in order to classify a candidate on the next start: which project, which generation, when, and which explicit save it was based on (404 section 2).",
+  "type": "object",
+  "properties": {
+    "recoveryId": {
+      "type": "string",
+      "maxLength": 36,
+      "description": "Identifies this record, as a canonical hyphenated UUID."
+    },
+    "projectId": {
+      "type": "string",
+      "maxLength": 36,
+      "description": "The project this record belongs to. Recovery candidates are located by this, not by path: a project that moved is still the same project."
+    },
+    "stateGeneration": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 18446744073709551615,
+      "description": "The committed generation this record holds. 404 invariant 2: only committed generations are recorded, never a half-built edit."
+    },
+    "recordedAt": {
+      "type": "string",
+      "maxLength": 64,
+      "description": "When the record was written, as an RFC 3339 timestamp."
+    },
+    "baseSaveHash": {
+      "type": "string",
+      "maxLength": 128,
+      "description": "The content hash of the explicit save this record builds on, or empty when the project has never been saved. 404 section 6 compares it to tell a useful candidate from one belonging to a version the user has since replaced."
+    },
+    "appVersion": {
+      "type": "string",
+      "maxLength": 32,
+      "description": "The Mirae version that wrote the record, for diagnostics."
+    },
+    "project": {
+      "$ref": "mirae://project/v1/persisted-project-envelope",
+      "description": "The project as it stood at that generation."
+    }
+  },
+  "required": [
+    "recoveryId",
+    "projectId",
+    "stateGeneration",
+    "recordedAt",
+    "baseSaveHash",
+    "appVersion",
+    "project"
+  ],
+  "additionalProperties": false
+}

@@ -18,8 +18,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use mirae_commands::{ActorContext, CommandEnvelope, CommandError, CommandId, LifecyclePhase};
 use mirae_project::{
-    CreateProject, Durability, FileIdentity, SaveState, create_empty_project, envelope_of,
-    save_project,
+    CreateProject, Durability, FileIdentity, SaveState, clean_stale_temporaries,
+    create_empty_project, envelope_of, save_project,
 };
 use mirae_state::StateStore;
 
@@ -115,6 +115,23 @@ impl ProjectSession {
             Ok(result) => {
                 self.save_state.complete_save(result.saved_generation);
                 self.identity = result.identity;
+
+                // A previous run that died between writing a temporary file and
+                // renaming it left debris (`403` section 5). The run that
+                // succeeds afterwards is the one that knows it is stale.
+                let removed = clean_stale_temporaries(&result.path);
+
+                if removed > 0 {
+                    let mut out = std::io::stdout().lock();
+                    let _ = std::io::Write::write_fmt(
+                        &mut out,
+                        format_args!(
+                            "cleaned {removed} stale save file(s)
+"
+                        ),
+                    );
+                }
+
                 self.path = Some(result.path);
                 Ok(())
             }
@@ -145,6 +162,10 @@ impl SaveFailure {
                 mirae_project::SaveError::Serialization(_) => "not_representable",
                 mirae_project::SaveError::NoDestinationDirectory => "no_save_destination",
                 mirae_project::SaveError::Filesystem(_) => "filesystem_refused",
+                // Only reachable through a fault plan, which production never
+                // builds with anything in it. Reported rather than ignored, so a
+                // harness that injects one sees it arrive at the page.
+                mirae_project::SaveError::Interrupted(_) => "save_interrupted",
             },
         }
     }

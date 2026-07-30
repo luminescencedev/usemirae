@@ -53,7 +53,7 @@ The bridge, then the flow in the window MIR-0016 built. The control UI reports
 
 What ordinary tests do not reach.
 
-- [ ] MIR-0114 — Add interrupted-save fault test
+- [x] MIR-0114 — Add interrupted-save fault test
 - [ ] MIR-0115 — Add project round-trip compatibility fixture
 
 ## Order

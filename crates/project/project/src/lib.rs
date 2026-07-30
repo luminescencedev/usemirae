@@ -39,8 +39,13 @@ pub use open::{
     open_project,
 };
 pub use recovery::{RecoveryCandidate, RecoveryError, RecoveryStore, RetentionPolicy};
-pub use save::{Durability, FileIdentity, FilesystemFailure, SaveError, SaveResult, save_project};
+pub use save::{
+    Durability, FaultPlan, FaultPoint, FileIdentity, FilesystemFailure, SaveError, SaveResult,
+    clean_stale_temporaries, save_project, save_project_with_faults,
+};
 
+#[cfg(test)]
+mod fault_tests;
 #[cfg(test)]
 mod open_tests;
 #[cfg(test)]

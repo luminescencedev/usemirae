@@ -23,6 +23,78 @@ use mirae_types::StateGeneration;
 
 use crate::canonical::{CanonicalError, serialize_with_integrity};
 
+/// A named point in the save pipeline where a fault can be injected.
+///
+/// Canonical documentation: `docs/06-quality/611-fault-injection.md` section 3,
+/// which requires fault points to be *named and stable* rather than ad hoc. The
+/// names below are the ones that document lists for saving, so a test and a
+/// diagnostic can refer to the same instant.
+///
+/// The interesting property of the save pipeline is that it survives being
+/// stopped anywhere, and the only way to know that is to stop it there. Faking
+/// it — writing a truncated file by hand and asserting the reader copes — would
+/// test the reader, not the writer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum FaultPoint {
+    /// `project.save.before_temp_write`: nothing has been written yet.
+    BeforeTempWrite,
+    /// `project.save.after_temp_write`: the temporary file exists and is complete.
+    AfterTempWrite,
+    /// `project.save.before_publish`: the rename has not happened.
+    ///
+    /// The moment `403` invariant 7 is about: the previous file must survive.
+    BeforePublish,
+    /// `project.save.after_publish`: the rename has happened.
+    ///
+    /// The moment `403` invariant 2 is about: the new file must be complete.
+    AfterPublish,
+}
+
+impl FaultPoint {
+    /// The stable name from `611` section 3.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::BeforeTempWrite => "project.save.before_temp_write",
+            Self::AfterTempWrite => "project.save.after_temp_write",
+            Self::BeforePublish => "project.save.before_publish",
+            Self::AfterPublish => "project.save.after_publish",
+        }
+    }
+}
+
+/// Which fault point, if any, should stop a save.
+///
+/// Default is none, so `save_project` is the plain pipeline and nothing in
+/// production carries a branch that a test controls.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct FaultPlan {
+    interrupt_at: Option<FaultPoint>,
+}
+
+impl FaultPlan {
+    /// A plan that injects nothing.
+    #[must_use]
+    pub const fn none() -> Self {
+        Self { interrupt_at: None }
+    }
+
+    /// A plan that stops the save at `point`, as an abrupt termination would.
+    #[must_use]
+    pub const fn interrupt_at(point: FaultPoint) -> Self {
+        Self {
+            interrupt_at: Some(point),
+        }
+    }
+
+    /// Whether this plan stops the save at `point`.
+    #[must_use]
+    fn stops_at(self, point: FaultPoint) -> bool {
+        self.interrupt_at == Some(point)
+    }
+}
+
 /// How hard a save works to survive a crash (`403` section 6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Durability {
@@ -84,6 +156,12 @@ pub enum SaveError {
     /// Not overwritten. `403` invariant 4 requires external modification to be
     /// detected, and the only safe response is to stop and let a person decide.
     ExternallyModified,
+    /// The save was stopped at an injected fault point (`611` section 3).
+    ///
+    /// Only reachable through [`FaultPlan`], which production never builds with
+    /// anything in it. It exists so a test can assert what the *filesystem*
+    /// looks like afterwards, which is the thing that matters.
+    Interrupted(FaultPoint),
     /// The filesystem refused, with a stable category rather than an OS string.
     ///
     /// The category is what a caller can branch on; the raw message would carry
@@ -124,6 +202,9 @@ impl std::fmt::Display for SaveError {
             }
             Self::ExternallyModified => {
                 formatter.write_str("the project file changed since it was last read")
+            }
+            Self::Interrupted(point) => {
+                write!(formatter, "the save was interrupted at {}", point.as_str())
             }
             Self::Filesystem(failure) => formatter.write_str(match failure {
                 FilesystemFailure::PermissionDenied => "the project file could not be written to",
@@ -168,6 +249,30 @@ pub fn save_project(
     expected: Option<&FileIdentity>,
     durability: Durability,
 ) -> Result<SaveResult, SaveError> {
+    save_project_with_faults(
+        envelope,
+        generation,
+        path,
+        expected,
+        durability,
+        FaultPlan::none(),
+    )
+}
+
+/// Write a project file atomically, stopping at an injected fault point.
+///
+/// The pipeline `save_project` runs, with the fault points from `611` section 3
+/// made observable. An interruption returns without unwinding: it models a
+/// process that stopped existing, so nothing after the point runs — including
+/// the cleanup that would otherwise remove a temporary file.
+pub fn save_project_with_faults(
+    envelope: &PersistedProjectEnvelope,
+    generation: StateGeneration,
+    path: &Path,
+    expected: Option<&FileIdentity>,
+    durability: Durability,
+    faults: FaultPlan,
+) -> Result<SaveResult, SaveError> {
     let (text, content_hash) =
         serialize_with_integrity(envelope).map_err(SaveError::Serialization)?;
 
@@ -191,6 +296,10 @@ pub fn save_project(
         temporary_suffix()
     ));
 
+    if faults.stops_at(FaultPoint::BeforeTempWrite) {
+        return Err(SaveError::Interrupted(FaultPoint::BeforeTempWrite));
+    }
+
     let write_outcome = write_temporary(&temporary, text.as_bytes(), durability);
 
     if let Err(failure) = write_outcome {
@@ -200,9 +309,26 @@ pub fn save_project(
         return Err(SaveError::Filesystem(failure));
     }
 
+    // Stopping here leaves the temporary file behind, exactly as a killed
+    // process would. That is the state `403` section 5 requires the *next* run to
+    // clean up, so the test asserts the debris rather than a tidy failure.
+    if faults.stops_at(FaultPoint::AfterTempWrite) || faults.stops_at(FaultPoint::BeforePublish) {
+        return Err(SaveError::Interrupted(
+            if faults.stops_at(FaultPoint::AfterTempWrite) {
+                FaultPoint::AfterTempWrite
+            } else {
+                FaultPoint::BeforePublish
+            },
+        ));
+    }
+
     if let Err(error) = std::fs::rename(&temporary, path) {
         let _ = std::fs::remove_file(&temporary);
         return Err(SaveError::Filesystem(FilesystemFailure::of_io(&error)));
+    }
+
+    if faults.stops_at(FaultPoint::AfterPublish) {
+        return Err(SaveError::Interrupted(FaultPoint::AfterPublish));
     }
 
     if durability == Durability::Strong {
@@ -243,6 +369,42 @@ fn write_temporary(
     }
 
     Ok(())
+}
+
+/// Remove temporary save files left behind by an interrupted run.
+///
+/// `403` section 5: temporary files are cleaned after bounded retention and are
+/// never mistaken for recovery snapshots. A run that was killed between writing
+/// one and renaming it leaves debris, and the next run is the thing that knows
+/// the debris is stale.
+///
+/// Only files matching the temporary naming scheme for `path` are considered, so
+/// this cannot remove anything a user put there.
+pub fn clean_stale_temporaries(path: &Path) -> usize {
+    let Some(directory) = path.parent() else {
+        return 0;
+    };
+    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+        return 0;
+    };
+    let Ok(entries) = std::fs::read_dir(directory) else {
+        return 0;
+    };
+
+    let prefix = format!(".{name}.");
+    let mut removed = 0;
+
+    for entry in entries.flatten() {
+        let matches = entry.file_name().to_str().is_some_and(|entry_name| {
+            entry_name.starts_with(&prefix) && entry_name.ends_with(".tmp")
+        });
+
+        if matches && std::fs::remove_file(entry.path()).is_ok() {
+            removed += 1;
+        }
+    }
+
+    removed
 }
 
 /// A collision-resistant suffix for a temporary file name.

@@ -8,7 +8,8 @@
 //!
 //! The store, immutable generation-stamped snapshots, derived indexes, and
 //! bounded retention (`MIR-0102`); the transaction coordinator that is the only
-//! way to commit (`MIR-0104`).
+//! way to commit (`MIR-0104`); domain events published after commit through
+//! bounded subscriber queues (`MIR-0105`).
 //!
 //! # What does not
 //!
@@ -17,10 +18,15 @@
 //! only the transaction coordinator to commit and that rule is enforced here by
 //! module visibility rather than by convention.
 
+pub mod events;
 pub mod project_state;
 pub mod store;
 pub mod transaction;
 
+pub use events::{
+    DomainEvent, EventBus, EventEnvelope, EventId, EventSequence, OverflowPolicy, Subscriber,
+    SubscriberId,
+};
 pub use project_state::{Indexes, ProjectState};
 pub use store::{PROJECTION_SCHEMA_VERSION, RETAINED_SNAPSHOTS, Snapshot, StateStore};
 pub use transaction::{CommitOutcome, Transaction, TransactionError, UndoRecord};

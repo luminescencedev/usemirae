@@ -20,6 +20,7 @@ use std::sync::Arc;
 use mirae_commands::{CommandError, CommandId};
 use mirae_types::{EntityId, StateGeneration};
 
+use crate::events::DomainEvent;
 use crate::project_state::ProjectState;
 use crate::store::{Snapshot, StateStore};
 
@@ -92,6 +93,13 @@ pub struct CommitOutcome {
     pub generation: StateGeneration,
     /// How to reverse it, when the transaction declared itself undoable.
     pub undo: Option<UndoRecord>,
+    /// The domain events this commit produced, in the order they were emitted.
+    ///
+    /// Returned rather than published here. `105` section 4 and `107` section
+    /// 3.7 require publication *after* commit, and the surest way to guarantee
+    /// that is for the commit to have no way to publish: a caller cannot leak an
+    /// event early if it only receives them once the swap has happened.
+    pub events: Vec<DomainEvent>,
 }
 
 /// One in-memory domain transaction (`107` section 2).
@@ -108,6 +116,7 @@ pub struct Transaction<'store> {
     expected: Option<StateGeneration>,
     command_id: Option<CommandId>,
     affected: Vec<EntityId>,
+    events: Vec<DomainEvent>,
     undoable: bool,
 }
 
@@ -124,6 +133,7 @@ impl<'store> Transaction<'store> {
             expected: None,
             command_id: None,
             affected: Vec::new(),
+            events: Vec::new(),
             undoable: false,
         }
     }
@@ -181,6 +191,15 @@ impl<'store> Transaction<'store> {
         Ok(())
     }
 
+    /// Queue a domain event for publication after commit (`105` section 2.1).
+    ///
+    /// Queued, not published. If this transaction never commits, the event never
+    /// existed, which is what `107` section 10 means by a pre-commit failure
+    /// publishing no committed event.
+    pub fn emit(&mut self, event: DomainEvent) {
+        self.events.push(event);
+    }
+
     /// Record that this transaction touched `entity`.
     pub fn touched(&mut self, entity: EntityId) {
         if !self.affected.contains(&entity) {
@@ -230,6 +249,7 @@ impl<'store> Transaction<'store> {
             snapshot,
             generation,
             undo,
+            events: self.events,
         })
     }
 }

@@ -1280,6 +1280,7 @@ version = "0.0.0"
 name = "mirae-state"
 version = "0.0.0"
 dependencies = [
+ "mirae-commands",
  "mirae-domain",
  "mirae-types",
 ]

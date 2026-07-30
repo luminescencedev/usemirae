@@ -87,10 +87,9 @@ impl Snapshot {
 /// Owns the authoritative state for one engine session (`106` section 1).
 ///
 /// `install` and `candidate` are crate-visible because `106` section 4 allows
-/// only the transaction coordinator to commit, and the coordinator arrives in
-/// this crate with `MIR-0104`. Until then they are exercised only by this
-/// crate's tests, which is what the scoped `dead_code` allow below records —
-/// scoped to the impl block, not to the crate, and removed by the next ticket.
+/// only the transaction coordinator to commit. The coordinator is
+/// [`crate::Transaction`], in this crate, so the rule is a visibility boundary
+/// rather than a comment.
 #[derive(Debug)]
 pub struct StateStore {
     current: Arc<Snapshot>,
@@ -155,9 +154,6 @@ impl StateStore {
     }
 
     /// Install a new state as the next generation.
-    ///
-    /// See the note on [`StateStore`]: the transaction coordinator that calls
-    /// this arrives with `MIR-0104`.
     ///
     /// Crate-visible on purpose: `106` section 4 allows only the transaction
     /// coordinator to commit, and the coordinator lives in this crate. Making

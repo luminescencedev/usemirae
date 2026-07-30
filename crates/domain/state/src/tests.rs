@@ -285,15 +285,24 @@ fn committing_a_large_project_stays_far_inside_the_acknowledgement_budget() {
     // shape of an ordinary user edit, and its cost is what the ADR claims is
     // proportional to the project rather than to the edit — but with a constant
     // small enough that the difference does not reach a person.
-    let started = Instant::now();
-    let mut candidate = store.candidate();
-    candidate.put_scene(scene(SceneId::new(), Vec::new()));
-    store.install(candidate);
-    let elapsed = started.elapsed();
+    //
+    // Best of several, not one measurement. `cargo test` runs these in parallel
+    // on a machine doing other work, so a single sample measures contention as
+    // much as code.
+    let best = (0..5)
+        .map(|_| {
+            let started = Instant::now();
+            let mut candidate = store.candidate();
+            candidate.put_scene(scene(SceneId::new(), Vec::new()));
+            store.install(candidate);
+            started.elapsed()
+        })
+        .min()
+        .unwrap_or_default();
 
     assert!(
-        elapsed.as_millis() < BUDGET_MILLIS,
-        "one edit against {ENTITIES} entities took {elapsed:?}, which means the \
-         commit is copying entities rather than pointers"
+        best.as_millis() < BUDGET_MILLIS,
+        "the fastest of five edits against {ENTITIES} entities took {best:?}, \
+         which means the commit is copying entities rather than pointers"
     );
 }

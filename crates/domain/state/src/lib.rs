@@ -7,20 +7,23 @@
 //! # What exists today
 //!
 //! The store, immutable generation-stamped snapshots, derived indexes, and
-//! bounded retention (`MIR-0102`).
+//! bounded retention (`MIR-0102`); the transaction coordinator that is the only
+//! way to commit (`MIR-0104`).
 //!
 //! # What does not
 //!
-//! Transactions, patches, and the session and capability partitions from `106`
-//! section 2. They arrive with `MIR-0104` and `MIR-0106`, in this crate, because
-//! `106` section 4 allows only the transaction coordinator to commit and that
-//! rule is enforced here by module visibility rather than by convention.
+//! Patches, and the session and capability partitions from `106` section 2.
+//! They arrive with `MIR-0106`, in this crate, because `106` section 4 allows
+//! only the transaction coordinator to commit and that rule is enforced here by
+//! module visibility rather than by convention.
 
 pub mod project_state;
 pub mod store;
+pub mod transaction;
 
 pub use project_state::{Indexes, ProjectState};
 pub use store::{PROJECTION_SCHEMA_VERSION, RETAINED_SNAPSHOTS, Snapshot, StateStore};
+pub use transaction::{CommitOutcome, Transaction, TransactionError, UndoRecord};
 
 #[cfg(test)]
 mod tests;

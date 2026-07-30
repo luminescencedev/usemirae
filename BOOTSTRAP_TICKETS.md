@@ -700,6 +700,94 @@ prevent.
   `MIR-TOOLING-0002` in particular keeps getting more valuable as the workspace
   grows, because `cargo xtask test-affected` still runs everything.
 
+## AI and UI Quality Follow-Ups
+
+### MIR-0117 — Strengthen the AI and visible-UI engineering contract
+
+```text
+ID:                MIR-0117
+Title:             Strengthen the AI and visible-UI engineering contract
+Status:            ready
+Goal:              Make Claude communicate with the owner in French, keep all
+                   implementation artifacts in English, route relevant skills,
+                   and require product-shaped, visually validated UI even for
+                   milestone and diagnostic surfaces.
+Canonical Docs:    CLAUDE.md
+                   AGENT_SKILLS.md
+                   docs/08-development/815-ai-build-workflow.md
+                   docs/09-ui-ux/900-ui-ux-overview.md
+                   docs/09-ui-ux/904-desktop-shell-layout.md
+                   docs/09-ui-ux/907-color-and-theme.md
+                   docs/09-ui-ux/923-accessibility-and-reduced-motion.md
+Scope:             Update CLAUDE.md; add AGENT_SKILLS.md; add the project-owned
+                   mirae-ui-engineering skill and references; install only the
+                   approved external skills after reviewing their files.
+Out of Scope:      Changing the UI primitive library or redesigning the current
+                   workspace.
+Acceptance:        - owner-facing communication rules are explicit;
+                   - source and product language rules are explicit;
+                   - every visible ticket requires product-shaped states and
+                     rendered validation;
+                   - diagnostics placement is explicit;
+                   - skill authority and routing are explicit;
+                   - the custom skill validates and is committed;
+                   - repository checks pass.
+```
+
+### MIR-0118 — Replace the unused Base UI dependency with React Aria Components
+
+```text
+ID:                MIR-0118
+Title:             Replace the unused Base UI dependency with React Aria Components
+Status:            blocked by MIR-0117
+Goal:              Adopt React Aria Components as the private accessible
+                   interaction foundation behind @mirae/ui-kit before production
+                   components depend on another primitive library.
+Canonical Docs:    DEPENDENCY_VERSIONS.md
+                   docs/09-ui-ux/911-ui-library-decisions.md
+                   docs/09-ui-ux/910-component-architecture.md
+                   docs/08-development/804-dependency-rules.md
+Scope:             Remove @base-ui/react; add react-aria-components 1.19.0;
+                   update exact versions, lockfile, UI-kit manifest, library
+                   decision, and ESLint import boundary.
+Out of Scope:      Redesigning Button, StatusBadge, or the workspace; introducing
+                   Spectrum styling; adding a second primitive library.
+Acceptance:        - no @base-ui/react entry remains in manifests or lockfile;
+                   - React Aria is private to @mirae/ui-kit;
+                   - feature imports are rejected by ESLint;
+                   - existing public components retain their API and tests;
+                   - frozen install, typecheck, tests, lint, build, and docs pass.
+```
+
+### MIR-0119 — Replace the provisional debug layout with the product-shaped workspace shell
+
+```text
+ID:                MIR-0119
+Title:             Replace the provisional debug layout with the product-shaped workspace shell
+Status:            blocked by MIR-0117 and MIR-0118
+Goal:              Make the currently test-oriented UI look and behave like the
+                   first honest state of the final Mirae desktop workspace.
+Canonical Docs:    docs/09-ui-ux/900-ui-ux-overview.md
+                   docs/09-ui-ux/904-desktop-shell-layout.md
+                   docs/09-ui-ux/907-color-and-theme.md
+                   docs/09-ui-ux/910-component-architecture.md
+                   docs/09-ui-ux/923-accessibility-and-reduced-motion.md
+Scope:             Add the titlebar/status region, final-shaped workspace regions,
+                   polished empty states, compact connection status, and a
+                   dedicated diagnostics disclosure or surface. Remove ordinary
+                   static inline layout styling from App, Button, and StatusBadge.
+Out of Scope:      Fake scenes, fake sources, renderer output, streaming, recording,
+                   or pretending unavailable engine state exists.
+Acceptance:        - every state uses Mirae tokens and UI-kit components;
+                   - connection status is compact and diagnostics are secondary;
+                   - workspace remains visible while disconnected;
+                   - loading, empty, connected, reconnecting, unavailable, and
+                     bridge-error states are rendered and tested;
+                   - keyboard, focus, reduced motion, 1440 x 900, and a narrower
+                     desktop size are visually validated;
+                   - browser and Wry/WebView2 results are reported.
+```
+
 ## Deferred Follow-Ups
 
 Raised by completed tickets. Each is a separate ticket rather than hidden scope

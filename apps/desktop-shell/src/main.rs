@@ -29,6 +29,7 @@ mod assets;
 mod bridge;
 mod external;
 mod navigation;
+mod project_session;
 mod ui_host;
 
 use std::io::Write as _;

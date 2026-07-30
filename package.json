@@ -13,7 +13,9 @@
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
     "build": "pnpm -r build",
-    "dev": "pnpm --filter @mirae/control-ui dev"
+    "dev": "pnpm --filter @mirae/control-ui dev",
+    "app": "node tools/dev/run-desktop.mjs",
+    "app:fast": "node tools/dev/run-desktop.mjs --no-build"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",

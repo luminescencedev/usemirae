@@ -28,6 +28,7 @@ use crate::assets::{Resolution, UiResources};
 use crate::bridge::{self, EngineView};
 use crate::external::open_in_browser;
 use crate::navigation::{APP_SCHEME, CONTENT_SECURITY_POLICY, Decision, START_URL, decide};
+use crate::project_session::ProjectSession;
 
 /// Title of the main control window (`501` section 5: every window has a role).
 const WINDOW_TITLE: &str = "Mirae";
@@ -166,6 +167,9 @@ pub(crate) fn run(
 
     let mut failure: Option<FatalError> = None;
     let mut engine = engine;
+    // The open project, owned by the loop. Every bridge request that touches it
+    // arrives here, so there is one owner and no lock.
+    let mut session: Option<ProjectSession> = None;
 
     event_loop.run_return(|event, _target, control_flow| {
         *control_flow = ControlFlow::WaitUntil(Instant::now() + ENGINE_POLL_INTERVAL);
@@ -183,7 +187,7 @@ pub(crate) fn run(
                 }
             }
             Event::UserEvent(HostEvent::BridgeRequest(message)) => {
-                let response = bridge::handle(&message, &engine);
+                let response = bridge::handle(&message, &engine, &mut session);
                 let script = bridge::delivery_script(&response);
                 let _ = webview.evaluate_script(&script);
             }

@@ -12,8 +12,13 @@
     },
     "kind": {
       "type": "string",
-      "enum": ["engineStatus", "projectState"],
+      "enum": ["engineStatus", "projectState", "createProject", "saveProject"],
       "description": "What is being asked. An unknown value is refused rather than routed, so adding a capability means adding it here and regenerating both sides."
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 256,
+      "description": "The project name, for a request that creates one. Ignored otherwise. Bounded here as well as in the domain, so an over-long name is refused before it reaches a command."
     }
   },
   "required": ["requestId", "kind"],

@@ -106,8 +106,8 @@ export default tseslint.config(
   },
 
   {
-    // xtask and configuration files run on Node.
-    files: ["**/*.config.{js,ts}", "eslint.config.js"],
+    // Configuration files and developer scripts run on Node.
+    files: ["**/*.config.{js,ts}", "eslint.config.js", "tools/**/*.mjs"],
     languageOptions: {
       globals: { ...globals.node },
     },

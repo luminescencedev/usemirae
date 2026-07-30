@@ -12,6 +12,7 @@
  * implementation backlog in `docs/09-ui-ux/928-ui-implementation-backlog.md`.
  */
 
+export { Button, type ButtonProps, type ButtonTone } from "./components/Button";
 export {
   StatusBadge,
   type StatusBadgeProps,

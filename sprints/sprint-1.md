@@ -47,7 +47,7 @@ The bridge, then the flow in the window MIR-0016 built. The control UI reports
 "Not connected" until MIR-0116 exists.
 
 - [x] MIR-0116 — Add the typed shell bridge
-- [ ] MIR-0113 — Add create/open/save UI flow
+- [x] MIR-0113 — Add create/open/save UI flow
 
 ## Verification
 

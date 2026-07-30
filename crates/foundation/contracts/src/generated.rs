@@ -20,6 +20,10 @@ pub struct BridgeRequest {
     pub request_id: String,
     /// What is being asked. An unknown value is refused rather than routed, so adding a capability means adding it here and regenerating both sides.
     pub kind: BridgeRequestKind,
+    /// The project name, for a request that creates one. Ignored otherwise. Bounded here as well as in the domain, so an over-long name is refused before it reaches a command.
+    ///
+    /// Bounded to 256 characters by the schema.
+    pub name: Option<String>,
 }
 
 /// What is being asked. An unknown value is refused rather than routed, so adding a capability means adding it here and regenerating both sides.
@@ -31,6 +35,12 @@ pub enum BridgeRequestKind {
     /// The `projectState` value of `kind`.
     #[serde(rename = "projectState")]
     ProjectState,
+    /// The `createProject` value of `kind`.
+    #[serde(rename = "createProject")]
+    CreateProject,
+    /// The `saveProject` value of `kind`.
+    #[serde(rename = "saveProject")]
+    SaveProject,
 }
 
 impl BridgeRequestKind {
@@ -40,12 +50,17 @@ impl BridgeRequestKind {
         match self {
             Self::EngineStatus => "engineStatus",
             Self::ProjectState => "projectState",
+            Self::CreateProject => "createProject",
+            Self::SaveProject => "saveProject",
         }
     }
 }
 
 /// Maximum accepted length of `requestId`, for bounded decoding.
 pub const BRIDGE_REQUEST_REQUEST_ID_MAX_LENGTH: usize = 64;
+
+/// Maximum accepted length of `name`, for bounded decoding.
+pub const BRIDGE_REQUEST_NAME_MAX_LENGTH: usize = 256;
 
 /// BridgeResponse.
 ///
@@ -75,6 +90,20 @@ pub struct BridgeResponse {
     pub protocol_major: u16,
     /// Negotiated protocol minor version, or zero when not connected.
     pub protocol_minor: u16,
+    /// Whether a project is currently active. False means the other project fields carry nothing, rather than carrying stale values from one that was closed.
+    pub project_open: bool,
+    /// The active project's name, or empty when none is open.
+    ///
+    /// Bounded to 256 characters by the schema.
+    pub project_name: String,
+    /// Where the active project was last saved, or empty when it has never been saved.
+    ///
+    /// Bounded to 4096 characters by the schema.
+    pub project_path: String,
+    /// Whether the active project holds work the file does not. Derived from generations (MIR-0111), never set by hand.
+    pub project_dirty: bool,
+    /// The generation on disk, or zero when the project has never been saved.
+    pub saved_generation: u64,
     /// The committed state generation the shell last observed, or zero when it has observed none.
     pub state_generation: u64,
 }
@@ -87,6 +116,12 @@ pub const BRIDGE_RESPONSE_ERROR_CODE_MAX_LENGTH: usize = 64;
 
 /// Maximum accepted length of `engineSessionId`, for bounded decoding.
 pub const BRIDGE_RESPONSE_ENGINE_SESSION_ID_MAX_LENGTH: usize = 64;
+
+/// Maximum accepted length of `projectName`, for bounded decoding.
+pub const BRIDGE_RESPONSE_PROJECT_NAME_MAX_LENGTH: usize = 256;
+
+/// Maximum accepted length of `projectPath`, for bounded decoding.
+pub const BRIDGE_RESPONSE_PROJECT_PATH_MAX_LENGTH: usize = 4096;
 
 /// Engine readiness.
 ///

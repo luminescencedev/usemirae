@@ -13,6 +13,7 @@ import { EngineConnection } from "@mirae/client";
 import { useEffect, useState } from "react";
 
 import { EngineStatus } from "../features/diagnostics/EngineStatus";
+import { ProjectPanel } from "../features/project/ProjectPanel";
 import { createEngineTransport } from "../engine-transport";
 
 export function App() {
@@ -48,6 +49,7 @@ export function App() {
       <div style={{ display: "grid", gap: "16px", justifyItems: "center" }}>
         <h1 style={{ font: "600 24px/1.3 inherit", margin: 0 }}>Mirae</h1>
         <EngineStatus connection={connection} />
+        <ProjectPanel />
       </div>
     </main>
   );

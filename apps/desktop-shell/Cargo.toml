@@ -11,7 +11,12 @@ publish = false
 # Supervision logic lives in mirae-runtime so it is testable without spawning
 # processes; this crate provides the real launcher.
 mirae-contracts = { path = "../../crates/foundation/contracts" }
+mirae-commands = { path = "../../crates/domain/commands" }
+mirae-platform = { path = "../../crates/platform/platform" }
+mirae-project = { path = "../../crates/project/project" }
 mirae-runtime = { path = "../../crates/runtime/runtime" }
+mirae-state = { path = "../../crates/domain/state" }
+mirae-types = { path = "../../crates/foundation/types" }
 serde_json = { workspace = true }
 
 # The window and the system webview (ADR-0068). They stay in this application

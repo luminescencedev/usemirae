@@ -40,6 +40,30 @@
       "maximum": 65535,
       "description": "Negotiated protocol minor version, or zero when not connected."
     },
+    "projectOpen": {
+      "type": "boolean",
+      "description": "Whether a project is currently active. False means the other project fields carry nothing, rather than carrying stale values from one that was closed."
+    },
+    "projectName": {
+      "type": "string",
+      "maxLength": 256,
+      "description": "The active project's name, or empty when none is open."
+    },
+    "projectPath": {
+      "type": "string",
+      "maxLength": 4096,
+      "description": "Where the active project was last saved, or empty when it has never been saved."
+    },
+    "projectDirty": {
+      "type": "boolean",
+      "description": "Whether the active project holds work the file does not. Derived from generations (MIR-0111), never set by hand."
+    },
+    "savedGeneration": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 18446744073709551615,
+      "description": "The generation on disk, or zero when the project has never been saved."
+    },
     "stateGeneration": {
       "type": "integer",
       "minimum": 0,
@@ -53,6 +77,11 @@
     "errorCode",
     "engineConnected",
     "engineSessionId",
+    "projectOpen",
+    "projectName",
+    "projectPath",
+    "projectDirty",
+    "savedGeneration",
     "protocolMajor",
     "protocolMinor",
     "stateGeneration"

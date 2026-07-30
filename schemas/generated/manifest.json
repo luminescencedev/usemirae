@@ -18,7 +18,7 @@
       "domain": "ipc",
       "version": "v1",
       "typeName": "BridgeRequest",
-      "fields": 2,
+      "fields": 3,
       "path": "schemas/ipc/v1/bridge-request.schema.json"
     },
     {
@@ -27,7 +27,7 @@
       "domain": "ipc",
       "version": "v1",
       "typeName": "BridgeResponse",
-      "fields": 8,
+      "fields": 13,
       "path": "schemas/ipc/v1/bridge-response.schema.json"
     },
     {

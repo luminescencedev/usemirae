@@ -9,7 +9,9 @@
 /** What is being asked. An unknown value is refused rather than routed, so adding a capability means adding it here and regenerating both sides. */
 export type BridgeRequestKind =
   | "engineStatus"
-  | "projectState";
+  | "projectState"
+  | "createProject"
+  | "saveProject";
 
 /**
  * BridgeRequest.
@@ -23,10 +25,15 @@ export interface BridgeRequest {
   readonly requestId: string;
   /** What is being asked. An unknown value is refused rather than routed, so adding a capability means adding it here and regenerating both sides. */
   readonly kind: BridgeRequestKind;
+  /** The project name, for a request that creates one. Ignored otherwise. Bounded here as well as in the domain, so an over-long name is refused before it reaches a command. */
+  readonly name?: string;
 }
 
 /** Maximum accepted length of `requestId`, for bounded decoding. */
 export const BRIDGE_REQUEST_REQUEST_ID_MAX_LENGTH = 64;
+
+/** Maximum accepted length of `name`, for bounded decoding. */
+export const BRIDGE_REQUEST_NAME_MAX_LENGTH = 256;
 
 /**
  * BridgeResponse.
@@ -50,6 +57,16 @@ export interface BridgeResponse {
   readonly protocolMajor: number;
   /** Negotiated protocol minor version, or zero when not connected. */
   readonly protocolMinor: number;
+  /** Whether a project is currently active. False means the other project fields carry nothing, rather than carrying stale values from one that was closed. */
+  readonly projectOpen: boolean;
+  /** The active project's name, or empty when none is open. */
+  readonly projectName: string;
+  /** Where the active project was last saved, or empty when it has never been saved. */
+  readonly projectPath: string;
+  /** Whether the active project holds work the file does not. Derived from generations (MIR-0111), never set by hand. */
+  readonly projectDirty: boolean;
+  /** The generation on disk, or zero when the project has never been saved. */
+  readonly savedGeneration: number;
   /** The committed state generation the shell last observed, or zero when it has observed none. */
   readonly stateGeneration: number;
 }
@@ -62,6 +79,12 @@ export const BRIDGE_RESPONSE_ERROR_CODE_MAX_LENGTH = 64;
 
 /** Maximum accepted length of `engineSessionId`, for bounded decoding. */
 export const BRIDGE_RESPONSE_ENGINE_SESSION_ID_MAX_LENGTH = 64;
+
+/** Maximum accepted length of `projectName`, for bounded decoding. */
+export const BRIDGE_RESPONSE_PROJECT_NAME_MAX_LENGTH = 256;
+
+/** Maximum accepted length of `projectPath`, for bounded decoding. */
+export const BRIDGE_RESPONSE_PROJECT_PATH_MAX_LENGTH = 4096;
 
 /** Lifecycle state. `degraded` means the engine is serving requests with reduced capability and the detail field explains what is missing. */
 export type EngineReadinessState =

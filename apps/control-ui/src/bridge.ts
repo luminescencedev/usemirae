@@ -69,7 +69,7 @@ class BridgeClient {
   }
 
   /** Send a request and resolve with its answer. */
-  request(kind: BridgeRequest["kind"]): Promise<BridgeResponse> {
+  request(kind: BridgeRequest["kind"], name?: string): Promise<BridgeResponse> {
     const ipc = window.ipc;
 
     if (!ipc) {
@@ -98,9 +98,13 @@ class BridgeClient {
         },
       });
 
-      ipc.postMessage(
-        JSON.stringify({ requestId, kind } satisfies BridgeRequest),
-      );
+      // `name` is omitted rather than sent as undefined: the schema marks it
+      // optional, and `exactOptionalPropertyTypes` treats "absent" and "present
+      // and undefined" as the different things they are on the wire.
+      const message: BridgeRequest =
+        name === undefined ? { requestId, kind } : { requestId, kind, name };
+
+      ipc.postMessage(JSON.stringify(message));
     });
   }
 

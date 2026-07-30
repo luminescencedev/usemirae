@@ -5,6 +5,7 @@ members = [
     "apps/engine",
     "apps/extension-host",
     "crates/*/*",
+    "tests/integration",
     "tools/xtask",
 ]
 

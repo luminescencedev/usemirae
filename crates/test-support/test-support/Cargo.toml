@@ -6,5 +6,11 @@ edition.workspace = true
 rust-version.workspace = true
 publish = false
 
+[dependencies]
+# The harness speaks the real protocol, so it uses the real codec and contracts.
+mirae-contracts = { path = "../../foundation/contracts" }
+mirae-runtime = { path = "../../runtime/runtime" }
+serde_json = { workspace = true }
+
 [lints]
 workspace = true

@@ -72,6 +72,14 @@ name = "mirae-frame-compiler"
 version = "0.0.0"
 
 [[package]]
+name = "mirae-integration-tests"
+version = "0.0.0"
+dependencies = [
+ "mirae-contracts",
+ "mirae-test-support",
+]
+
+[[package]]
 name = "mirae-media-ffmpeg"
 version = "0.0.0"
 
@@ -165,6 +173,11 @@ version = "0.0.0"
 [[package]]
 name = "mirae-test-support"
 version = "0.0.0"
+dependencies = [
+ "mirae-contracts",
+ "mirae-runtime",
+ "serde_json",
+]
 
 [[package]]
 name = "mirae-types"

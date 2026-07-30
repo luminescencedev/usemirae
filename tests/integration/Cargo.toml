@@ -1,0 +1,20 @@
+[package]
+name = "mirae-integration-tests"
+description = "Cross-cutting integration tests that launch real Mirae processes."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+# No library and no binary: this package exists only for its tests, which is what
+# `801-monorepo-architecture.md` section 7 means by keeping cross-cutting tests
+# out of the implementation crates.
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+mirae-contracts = { path = "../../crates/foundation/contracts" }
+mirae-test-support = { path = "../../crates/test-support/test-support" }
+
+[lints]
+workspace = true

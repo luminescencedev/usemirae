@@ -264,25 +264,9 @@ fn test(scope: &TestScope, root: &Path) -> Result<(), StepError> {
             runner::run_all(&["cargo test --workspace", "pnpm -r test"], root)
         }
         TestScope::Integration => {
-            let tests_dir = root.join("tests");
-            let has_tests = std::fs::read_dir(&tests_dir).is_ok_and(|entries| {
-                entries.flatten().any(|entry| {
-                    entry
-                        .path()
-                        .extension()
-                        .is_some_and(|extension| extension == "rs" || extension == "ts")
-                })
-            });
-
-            if has_tests {
-                return runner::run("cargo test --workspace --tests", root);
-            }
-
-            println!(
-                "No cross-cutting tests exist under tests/ yet; the first harness \
-                 arrives with MIR-0015."
-            );
-            Ok(())
+            // The integration package exists only for its tests, so running it
+            // runs the cross-cutting suite and nothing else.
+            runner::run("cargo test --package mirae-integration-tests", root)
         }
     }
 }

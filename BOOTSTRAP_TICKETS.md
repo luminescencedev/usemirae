@@ -428,7 +428,32 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
     the clean result was real rather than a check that never fires.
   - follow-up: orphan detection (a document reachable from no summary entry) is
     not implemented
-- [ ] MIR-0015 — Add first integration test harness
+- [x] MIR-0015 — Add first integration test harness
+  - status: done
+  - branch: `main` (trunk-based; no pull request)
+  - harness: `mirae-test-support` gained `EngineHarness`, which launches the real
+    engine, performs the authenticated handshake, and stops it cooperatively.
+    Every wait is bounded and every error names what it was waiting for, because a
+    hanging test is worse than a failing one: CI cannot tell a hang from a slow
+    machine.
+  - determinism: the credential comes from a fixed seed rather than randomness, so
+    a failing run reproduces exactly. `Drop` stops the engine, so a panicking test
+    cannot leak a process into the rest of the suite, which one test asserts
+    directly.
+  - package: `tests/integration` is a workspace member holding no implementation,
+    which is what doc 801 section 7 means by keeping cross-cutting tests out of the
+    implementation crates. `cargo xtask test-integration` now runs it instead of
+    reporting that no harness exists.
+  - tests: an authenticated client is accepted and the engine stops cleanly; a
+    wrong credential is refused by the real engine and the reason does not leak the
+    credential; two concurrent engines report different sessions (doc 102
+    invariant 8); dropping the harness leaves no process behind.
+  - validation: `cargo xtask check` (exit 0), `cargo xtask test-integration`
+    (4 passed), no orphan processes afterwards
+  - notes: the integration test file carries a scoped
+    `allow(clippy::expect_used, clippy::panic)`. Doc 807 forbids them in
+    recoverable production paths; a test has no recovery, and failing loudly with
+    a message is the assertion. The allow is per file, not workspace-wide.
 
 ## Deferred Follow-Ups
 

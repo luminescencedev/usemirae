@@ -26,7 +26,7 @@ snapshot/patch protocol a client mirrors. Testable without a window or a file.
 - [x] MIR-0103 — Implement command envelope
 - [x] MIR-0104 — Implement transaction commit
 - [x] MIR-0105 — Implement event publication after commit
-- [ ] MIR-0106 — Implement state snapshot and patch protocol
+- [x] MIR-0106 — Implement state snapshot and patch protocol
 
 ## Strand 2 — Persistence
 

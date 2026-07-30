@@ -1,15 +1,26 @@
 /**
- * Typed engine client, reconnect logic, and command/query/event abstractions.
- *
- * Placeholder package created by `MIR-0001 — Initialize monorepo`. The real
- * client arrives with `MIR-0011` and `MIR-0012`.
+ * Typed engine client: connection state, reconnect logic, and the transport
+ * boundary.
  *
  * Canonical documentation:
- * - `docs/08-development/803-frontend-workspace-and-packages.md`
- * - `docs/01-runtime/109-ui-engine-synchronization.md`
+ * `docs/08-development/803-frontend-workspace-and-packages.md`.
  *
- * Generated contracts are the only DTO source; this package must not become
- * engine authority.
+ * This package does not become engine authority (`803` invariant 2). It reports
+ * what the engine said and when it last said it; it never invents state, and it
+ * clears what it knows the moment the connection drops.
+ *
+ * The real transport arrives with `MIR-0012`. Until then, `@mirae/test-utils`
+ * provides a fake one so the UI and its tests exercise the same code path.
  */
 
-export {};
+export {
+  DEFAULT_RECONNECT_POLICY,
+  EngineConnection,
+  retryDelayMs,
+  timerScheduler,
+  type ConnectionPhase,
+  type ConnectionSnapshot,
+  type EngineTransport,
+  type ReconnectPolicy,
+  type Scheduler,
+} from "./connection";

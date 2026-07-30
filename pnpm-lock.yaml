@@ -229,9 +229,15 @@ importers:
       '@mirae/config':
         specifier: workspace:*
         version: link:../config
+      '@mirae/test-utils':
+        specifier: workspace:*
+        version: link:../test-utils
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@types/node@24.13.3)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.13.3)(jiti@2.7.0))
 
   packages/config: {}
 

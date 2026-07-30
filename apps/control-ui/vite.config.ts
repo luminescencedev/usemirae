@@ -18,6 +18,7 @@ export default defineConfig({
     environment: "jsdom",
     // Playwright owns `tests/e2e`; vitest only runs unit and component tests.
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    setupFiles: ["./tests/setup.ts"],
     // Remove once the first screen tests land with MIR-0011.
     passWithNoTests: true,
   },

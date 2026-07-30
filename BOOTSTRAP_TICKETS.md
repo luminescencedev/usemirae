@@ -319,7 +319,42 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
     the shell reports to the terminal today and the control UI runs on its own dev
     server. The readiness line is also a stop-gap: MIR-ADR-0001 picks the wire
     format and MIR-0012 replaces the handoff with the authenticated handshake.
-- [ ] MIR-0011 — Build React control UI skeleton
+- [x] MIR-0011 — Build React control UI skeleton
+  - status: done
+  - branch: `main` (trunk-based; no pull request)
+  - client: `@mirae/client` holds the connection state machine and reconnect
+    policy. Transport and scheduler are injected, so every delay and failure path
+    is tested without waiting. Backoff is bounded: five attempts from 250 ms to
+    8 s, then `unavailable` with a reason rather than an endless spinner.
+  - no stale truth: a drop or a retry clears the last readiness, so the UI shows
+    what is true now instead of the last thing it saw (doc 803 invariant 2). A
+    test asserts no snapshot ever carries a readiness outside the connected phase.
+  - test-utils: `FakeEngineTransport` and `ManualScheduler` let the UI and its
+    tests exercise the same client code that will ship.
+  - ui-kit: `StatusBadge` is the first real component. Colour never carries the
+    meaning alone: the label states the status in words, and the dot is
+    `aria-hidden`. Tones map to reserved semantic tokens, so no component invents
+    a colour.
+  - UI: `EngineStatus` shows phase, protocol version, engine state, session id,
+    impairment detail, last error, the countdown to the next attempt, and a
+    working retry. It subscribes with `useSyncExternalStore` rather than mirroring
+    engine state into React state.
+  - validation: `cargo xtask check` (exit 0), `pnpm --filter @mirae/client test`
+    (13 tests), `pnpm --filter @mirae/control-ui test` (9 tests), `pnpm -r
+    typecheck`, `pnpm -r build`, `pnpm exec eslint .` — all exit 0
+  - required tests from doc 809 section 3 (UI): component, keyboard, and
+    accessibility checks plus fake-engine integration and reconnect behaviour are
+    covered. Screenshot and axe runs need the Playwright harness in a later
+    ticket.
+  - notes: the running application cannot reach an engine, because no IPC
+    endpoint exists until MIR-0012. Rather than fake a connection and show a green
+    badge that means nothing, `createEngineTransport` fails with that reason, so
+    the shipped app demonstrates the real reconnect and failure states. ESLint
+    caught a cascading-render pattern in the first draft, which is why the
+    subscription uses `useSyncExternalStore`.
+  - follow-up: no layout beyond this panel; the workspace shell is the UI backlog
+    in doc 09-ui-ux/928. `@testing-library/jest-dom` is not approved, so one
+    matcher is defined locally in the test setup.
 - [ ] MIR-0012 — Add authenticated IPC handshake
   - blocked by: MIR-ADR-0001 (the wire format must be decided before the
     handshake is encoded)

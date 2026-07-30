@@ -1,11 +1,28 @@
 /**
  * Application root.
  *
- * Placeholder created by `MIR-0001 — Initialize monorepo`. Engine connection,
- * version, process state, and reconnect behavior arrive with `MIR-0011`.
- * The desktop shell layout is specified in `docs/09-ui-ux/904-desktop-shell-layout.md`.
+ * Canonical documentation:
+ * - `docs/09-ui-ux/904-desktop-shell-layout.md`
+ * - `docs/08-development/803-frontend-workspace-and-packages.md`
+ *
+ * `MIR-0011` shows engine connection, version, process state, and reconnect
+ * behavior. The full workspace layout arrives with the UI implementation backlog.
  */
+
+import { EngineConnection } from "@mirae/client";
+import { useState } from "react";
+
+import { EngineStatus } from "../features/diagnostics/EngineStatus";
+import { createEngineTransport } from "../engine-transport";
+
 export function App() {
+  // One connection for the lifetime of the app. `useState` with an initializer
+  // keeps it stable across renders without a module-level singleton, which would
+  // outlive a hot reload and leak listeners.
+  const [connection] = useState(
+    () => new EngineConnection(createEngineTransport()),
+  );
+
   return (
     <main
       style={{
@@ -15,21 +32,10 @@ export function App() {
         padding: "24px",
       }}
     >
-      <section
-        style={{
-          background: "var(--mirae-surface)",
-          border: "1px solid var(--mirae-border)",
-          borderRadius: "var(--mirae-radius-panel)",
-          padding: "24px 28px",
-          maxWidth: "44ch",
-        }}
-      >
-        <h1 style={{ font: "600 15px/1.4 inherit", margin: 0 }}>Mirae</h1>
-        <p style={{ color: "var(--mirae-fg-muted)", margin: "8px 0 0" }}>
-          Control UI scaffold. No engine connection yet — that arrives with
-          MIR-0011.
-        </p>
-      </section>
+      <div style={{ display: "grid", gap: "16px", justifyItems: "center" }}>
+        <h1 style={{ font: "600 24px/1.3 inherit", margin: 0 }}>Mirae</h1>
+        <EngineStatus connection={connection} />
+      </div>
     </main>
   );
 }

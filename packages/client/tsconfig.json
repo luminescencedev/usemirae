@@ -1,4 +1,9 @@
 {
   "extends": "@mirae/config/tsconfig.base.json",
-  "include": ["src"]
+  "compilerOptions": {
+    // The client runs in the control UI, so it may use platform timers. It is not
+    // a React package, so it does not extend the React configuration.
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": ["src", "tests", "vitest.config.ts"]
 }

@@ -1,4 +1,9 @@
 {
-  "extends": "@mirae/config/tsconfig.base.json",
+  "extends": "@mirae/config/tsconfig.react.json",
+  "compilerOptions": {
+    // These harnesses compile the client's sources through its package export, so
+    // they need the same platform library.
+    "lib": ["ES2023", "DOM", "DOM.Iterable"]
+  },
   "include": ["src"]
 }

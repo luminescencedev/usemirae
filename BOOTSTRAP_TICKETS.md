@@ -410,7 +410,24 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
     show, which is why it kills a child rather than simulating an exit.
   - follow-up: restart after a handshake failure, and restart while an output is
     active, need the message loop and outputs respectively
-- [ ] MIR-0014 — Add documentation link validator
+- [x] MIR-0014 — Add documentation link validator
+  - status: done
+  - branch: `main` (trunk-based; no pull request)
+  - checks: `cargo xtask docs --check` now validates SUMMARY links resolve, every
+    ADR is indexed exactly once, each document declares the header block its kind
+    requires (`Status`/`Audience`/`Canonical` for numbered specifications,
+    `Status`/`Date` for ADRs), no two numbered documents claim the same id, and
+    every `ADR-NNNN` referenced in prose exists.
+  - headers are read from the header block only, so a status mentioned in prose
+    further down cannot satisfy the requirement; index pages such as `README.md`
+    and `SUMMARY.md` are exempt because they carry no header block.
+  - validation: `cargo xtask check` (exit 0), `cargo test --package xtask`
+    (103 tests). The live run reports 226 links, 228 documents.
+  - negative test: a probe document with no header block and a reference to
+    ADR-9999 produced exactly four findings and exit 1, which is how I confirmed
+    the clean result was real rather than a check that never fires.
+  - follow-up: orphan detection (a document reachable from no summary entry) is
+    not implemented
 - [ ] MIR-0015 — Add first integration test harness
 
 ## Deferred Follow-Ups

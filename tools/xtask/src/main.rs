@@ -303,8 +303,12 @@ fn validate_docs(root: &Path) -> Result<(), StepError> {
     let link_count = docs::extract_links(&summary).len();
 
     if findings.is_empty() {
-        println!("docs/SUMMARY.md: {link_count} links resolve, every ADR indexed once.");
-        println!("note: header, duplicate-id, and ADR reference validation belong to MIR-0014.");
+        let documents = docs::collect_documents(&docs_dir).len();
+        println!(
+            "docs: {link_count} SUMMARY links resolve, every ADR indexed once, \
+             {documents} documents carry their headers, ids are unique, and every \
+             ADR reference exists."
+        );
         return Ok(());
     }
 

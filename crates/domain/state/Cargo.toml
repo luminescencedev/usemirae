@@ -6,5 +6,12 @@ edition.workspace = true
 rust-version.workspace = true
 publish = false
 
+[dependencies]
+# The store holds domain entities and stamps them with generations. It reaches
+# no further: 804 section 2 puts application state above the domain and below
+# everything platform-shaped.
+mirae-domain = { path = "../domain" }
+mirae-types = { path = "../../foundation/types" }
+
 [lints]
 workspace = true

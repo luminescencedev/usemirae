@@ -1134,6 +1134,9 @@ dependencies = [
 [[package]]
 name = "mirae-domain"
 version = "0.0.0"
+dependencies = [
+ "mirae-types",
+]
 
 [[package]]
 name = "mirae-encoder"
@@ -1273,6 +1276,10 @@ version = "0.0.0"
 [[package]]
 name = "mirae-state"
 version = "0.0.0"
+dependencies = [
+ "mirae-domain",
+ "mirae-types",
+]
 
 [[package]]
 name = "mirae-test-support"

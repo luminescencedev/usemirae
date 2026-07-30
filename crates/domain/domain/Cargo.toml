@@ -6,5 +6,10 @@ edition.workspace = true
 rust-version.workspace = true
 publish = false
 
+[dependencies]
+# Identity only. 804 section 2: the domain sits directly above the foundation
+# and reaches nothing else.
+mirae-types = { path = "../../foundation/types" }
+
 [lints]
 workspace = true

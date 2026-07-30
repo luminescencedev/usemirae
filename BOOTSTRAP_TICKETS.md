@@ -277,7 +277,48 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
     the session id is derived from the clock and process id, and a
     cryptographically random one belongs to the platform layer with the launch
     credentials
-- [ ] MIR-0010 — Build native shell skeleton
+- [x] MIR-0010 — Build native shell skeleton
+  - status: done
+  - branch: `main` (trunk-based; no pull request)
+  - supervision: `mirae_runtime::supervisor` holds the logic behind an
+    `EngineLauncher` trait, so launch, crash, restart, and give-up are tested
+    without spawning processes. `apps/desktop-shell` supplies the real launcher.
+  - launch credential: `LaunchCredential` is bounded, its `Debug` is redacted, and
+    it travels in an environment variable rather than on the command line where
+    the process table would expose it. It is explicitly not cryptographic yet:
+    the constructor is named `placeholder`, and real entropy plus verification
+    belong to MIR-0012.
+  - no fabricated state: the observed readiness is cleared the moment the engine
+    goes away, so the shell reports what it can see rather than what it last saw
+    (doc 501 section 6, section 13).
+  - bounded restart: three restarts per minute by default, then the supervisor
+    gives up with a reason. The budget refills once the window passes, so an old
+    crash does not count against a later one.
+  - cooperative shutdown: the engine gained `--supervised`, which keeps it alive
+    until the shell closes its stdin. Closing the pipe is the shutdown request;
+    killing is the fallback after a five second deadline. Verified against the
+    real binaries: the engine ran its own lifecycle to `stopped` and left no
+    orphan process.
+  - validation: `cargo xtask check` (exit 0), `cargo test --package mirae-runtime`
+    (37 tests), and a real run of `mirae-shell.exe` reporting
+    `engine connected: session=... protocol=1.0 launches=1` plus the engine's
+    impairment detail
+  - required tests from doc 501 section 12: engine startup and engine crash are
+    covered. UI reload, navigation block, external link, second-instance
+    forwarding, drops, menu commands, multi-monitor restore, update restart, and
+    the fatal recovery flow all need the window and webview.
+  - notes: a real bug surfaced only by running the binaries. The engine used to
+    exit immediately after reporting, so the supervisor read a normal exit as a
+    crash loop and gave up after three relaunches. `--supervised` makes the engine
+    lifetime the shell's to decide, which is what doc 501 section 6 point 7 asks
+    for.
+  - follow-up: no window and no embedded webview. Doc 501 section 3 requires a
+    native webview over locally packaged resources, and every candidate is either
+    unapproved by `DEPENDENCY_VERSIONS.md` section 14 or a new Rust dependency
+    that must clear section 11. That choice needs its own ticket and an ADR, so
+    the shell reports to the terminal today and the control UI runs on its own dev
+    server. The readiness line is also a stop-gap: MIR-ADR-0001 picks the wire
+    format and MIR-0012 replaces the handoff with the authenticated handshake.
 - [ ] MIR-0011 — Build React control UI skeleton
 - [ ] MIR-0012 — Add authenticated IPC handshake
   - blocked by: MIR-ADR-0001 (the wire format must be decided before the

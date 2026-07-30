@@ -54,17 +54,25 @@ fn main() -> ExitCode {
         return ExitCode::SUCCESS;
     }
 
-    if let Some(unknown) = arguments.iter().find(|argument| argument.starts_with('-')) {
+    let supervised = arguments.iter().any(|argument| argument == SUPERVISED_FLAG);
+
+    if let Some(unknown) = arguments
+        .iter()
+        .find(|argument| argument.starts_with('-') && *argument != SUPERVISED_FLAG)
+    {
         let mut err = std::io::stderr().lock();
         let _ = writeln!(err, "unknown argument `{unknown}`; try --version");
         return ExitCode::FAILURE;
     }
 
-    run()
+    run(supervised)
 }
 
+/// Flag that makes the engine stay alive until its parent closes stdin.
+const SUPERVISED_FLAG: &str = "--supervised";
+
 /// Bootstrap, initialize, report readiness, and shut down.
-fn run() -> ExitCode {
+fn run(supervised: bool) -> ExitCode {
     // 102 invariant 8: a new engine process creates a new session.
     let session = new_session_id();
     let identity = ProcessIdentity::new(session, ROLE, BUILD_ID);
@@ -98,9 +106,35 @@ fn run() -> ExitCode {
     }
 
     publish_readiness(&engine);
+
+    if supervised {
+        // The shell owns the lifetime: it closes stdin to request shutdown, which
+        // is the cooperative half of `501` section 6 point 7. Killing the process
+        // is the supervisor's fallback, not its first move.
+        wait_for_parent_shutdown();
+    }
+
     engine.shutdown();
 
     ExitCode::SUCCESS
+}
+
+/// Block until stdin reaches end of file.
+///
+/// Reading, rather than sleeping, means the engine notices immediately when the
+/// shell exits or closes the pipe, including when the shell dies unexpectedly.
+fn wait_for_parent_shutdown() {
+    let mut discard = String::new();
+    let stdin = std::io::stdin();
+
+    loop {
+        discard.clear();
+        match stdin.read_line(&mut discard) {
+            // End of file: the shell closed the pipe or went away.
+            Ok(0) | Err(_) => return,
+            Ok(_) => {}
+        }
+    }
 }
 
 /// Register the services that exist today, in the order `102` section 5 fixes.

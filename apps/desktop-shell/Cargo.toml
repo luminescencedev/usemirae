@@ -6,5 +6,12 @@ edition.workspace = true
 rust-version.workspace = true
 publish = false
 
+[dependencies]
+# An application assembles libraries and holds no domain logic (801 section 4).
+# Supervision logic lives in mirae-runtime so it is testable without spawning
+# processes; this crate provides the real launcher.
+mirae-contracts = { path = "../../crates/foundation/contracts" }
+mirae-runtime = { path = "../../crates/runtime/runtime" }
+
 [lints]
 workspace = true

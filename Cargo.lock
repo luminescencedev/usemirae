@@ -130,6 +130,10 @@ version = "0.0.0"
 [[package]]
 name = "mirae-shell"
 version = "0.0.0"
+dependencies = [
+ "mirae-contracts",
+ "mirae-runtime",
+]
 
 [[package]]
 name = "mirae-source-runtime"

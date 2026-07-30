@@ -22,11 +22,16 @@
 
 pub mod lifecycle;
 pub mod service;
+pub mod supervisor;
 
 pub use lifecycle::{
     EngineLifecycleState, InvalidTransition, LifecycleCoordinator, MAX_RETAINED_TRANSITIONS,
 };
 pub use service::{Requirement, Service, ServiceOutcome, ServiceReport, ShutdownReport};
+pub use supervisor::{
+    EngineLauncher, LaunchCredential, RestartPolicy, SupervisionState, Supervisor,
+    parse_readiness_line,
+};
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};

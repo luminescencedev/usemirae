@@ -2,7 +2,7 @@
 
 Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
 
-## Current Sprint — Sprint 0
+## Sprint 0 — Repository Foundation — COMPLETE
 
 - [x] MIR-0001 — Initialize monorepo
   - status: done
@@ -512,6 +512,96 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
     only reports, single-instance forwarding, native menus, and drag-and-drop
     classification. Packaging must detect a missing WebView2 runtime and generate
     the attribution file from `Cargo.lock` (`509`).
+
+## Next Sprint — Sprint 1, Project Kernel
+
+Canonical scope: `docs/08-development/814-bootstrap-ticket-backlog.md`, Sprint 1.
+Roadmap phase: `813-implementation-roadmap.md` section 3.
+
+**Exit condition.** An empty project can be created, saved, reopened, and
+recovered — and can be driven from the control window rather than from a test.
+
+### What the sprint is actually about
+
+Sprint 0 made the processes exist and talk. Nothing in the application yet owns
+*state*. Every ticket below exists so that one sentence stops being true, in the
+order that keeps the thing runnable at each step (roadmap rule 1).
+
+Three strands, one order:
+
+1. **Kernel** (`MIR-0101` to `MIR-0106`) — identity, authoritative state,
+   commands, transactions, events, and the snapshot/patch protocol a client
+   mirrors. Pure domain and runtime work, testable without a window or a file.
+2. **Persistence** (`MIR-0107` to `MIR-0112`) — the schema, creation, atomic
+   save, open and validation, dirty tracking, and a bounded recovery store.
+3. **Visible** (`MIR-0116`, then `MIR-0113`) — the typed bridge, then the
+   create/open/save flow in the window MIR-0016 built. The control UI says
+   "Not connected" today because `MIR-0116` does not exist; it is the single
+   ticket standing between the shipped window and a UI that shows real state.
+
+`MIR-0114` and `MIR-0115` verify what ordinary tests do not reach: interrupted
+saves and schema compatibility.
+
+### Execution order and dependencies
+
+```text
+MIR-0101 typed IDs and generations          (no dependency)
+  ├── MIR-0102 state-store snapshot
+  │     └── MIR-0104 transaction commit ──┬── MIR-0105 event publication
+  ├── MIR-0103 command envelope ──────────┘        └── MIR-0106 snapshot/patch protocol
+  └── MIR-0107 project schema v1                          └── MIR-0116 typed shell bridge
+        └── MIR-0108 empty-project creation                     └── MIR-0113 UI flow
+              └── MIR-0109 atomic save
+                    ├── MIR-0110 open and validation ── MIR-0115 compatibility fixture
+                    ├── MIR-0111 dirty/saved tracking
+                    ├── MIR-0112 recovery store
+                    └── MIR-0114 interrupted-save fault test
+```
+
+`MIR-0107` depends only on `MIR-0101`, so the schema can be defined while the
+kernel is still being built. That is the one place in this sprint where two
+tickets can genuinely proceed in parallel.
+
+### Decisions that must precede code
+
+Three gates. Each is a decision the canonical documents deliberately left to an
+implementation ADR, and each blocks the ticket named beside it. Taking any of
+them quietly inside a feature ticket is the failure mode this list exists to
+prevent.
+
+- **State representation** — blocks `MIR-0102`. `106-state-store.md` section 5
+  asks for structural sharing where it helps and forbids deep-cloning the whole
+  project per command "without evidence that budgets are met". Deciding between
+  a persistent-data-structure crate and plain `Arc` snapshots means an ADR, a
+  benchmark against `601-performance-budgets.md`, and, if a crate wins, a
+  `DEPENDENCY_VERSIONS.md` section 11 clearance.
+- **Project file encoding** — blocks `MIR-0107`. `401-project-format.md` section
+  2 says the representation is selected by an implementation ADR. ADR-0067 chose
+  JSON for the *control plane*; a project file is a different problem with
+  different criteria — human review, diff stability, migration, and canonical
+  hashing — and deserves its own decision rather than an inherited one.
+- **Identifier type** — blocks `MIR-0101`. `005-domain-model.md` section 2
+  recommends a UUID. A UUID crate is a new Rust dependency and must clear
+  section 11 first, or the newtype must be implemented without one.
+
+### Risks worth naming now
+
+- **The kernel is where over-building is cheapest and most expensive.** Every
+  ticket above has a documented invariant list; none of them asks for undo,
+  multi-project, or extension participation yet. `405-command-history-and-undo-redo.md`
+  is Phase 7 work, and `MIR-0104` needs only to *produce* undo metadata, not to
+  consume it.
+- **`MIR-0106` and `MIR-0116` are one design across two processes.** The patch
+  protocol and the bridge that carries it should be reviewed together even
+  though they ship as separate tickets, or the second will re-litigate the first.
+- **Contracts before code.** `MIR-0103`, `MIR-0106`, and `MIR-0107` all produce
+  cross-process or persisted shapes, which the architecture rules say come from
+  canonical schemas through the generator. Hand-writing a type on either side
+  and reconciling later is the expensive mistake here.
+- **Sprint 0 left three small tickets open.** `MIR-DEPS-0001`,
+  `MIR-TOOLING-0001`, and `MIR-TOOLING-0002` below are unblocked and cheap;
+  `MIR-TOOLING-0002` in particular keeps getting more valuable as the workspace
+  grows, because `cargo xtask test-affected` still runs everything.
 
 ## Deferred Follow-Ups
 

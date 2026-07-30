@@ -454,6 +454,64 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
     `allow(clippy::expect_used, clippy::panic)`. Doc 807 forbids them in
     recoverable production paths; a test has no recovery, and failing loudly with
     a message is the assertion. The allow is per file, not workspace-wide.
+- [x] MIR-0016 — Host the control UI in a system webview
+  - status: done
+  - branch: `feat/MIR-0016-system-webview-host`
+  - dependencies: `wry 0.55.1` and `tao 0.35.3`, the matched pair ADR-0068 named,
+    both with default features off. `x11` stays on so the Linux build is not
+    silently Wayland-only. `DEPENDENCY_VERSIONS.md` section 11 now carries the
+    graph review: 85 third-party crates compiled on Windows and macOS, 130 on
+    Linux, 292 lockfile entries across all targets and features. Every crate in a
+    compiled graph is permissively licensed except `option-ext 0.2.0` (MPL-2.0,
+    macOS and Linux, through `dirs`), whose file-level copyleft obliges nothing
+    while the crate is unmodified. The MPL crates `cssparser` and `selectors` sit
+    in the lockfile behind `wry` features that are off and compile nowhere.
+  - window: the shell creates the main control window and hosts the packaged UI
+    in the operating system's own webview. The event loop keeps the process alive
+    and polls supervision every 250 ms, so an engine crash under an idle window is
+    reported rather than waited on.
+  - navigation: `apps/desktop-shell/src/navigation.rs` is the whole of `501`
+    section 4. Only the packaged origin loads — in both spellings, because `wry`
+    rewrites `mirae://localhost` to `http://mirae.localhost` on Windows. An
+    `https` address opens in the operating system browser; everything else is
+    blocked, including `javascript:`, `data:`, `file:`, and a host that merely
+    starts with the packaged prefix. Devtools are compiled in only for a debug
+    build, and clipboard, autoplay, zoom hotkeys, back-forward gestures, and
+    downloads are all off.
+  - resources: `apps/desktop-shell/src/assets.rs` is the only place a
+    webview-supplied string reaches the filesystem. Paths are length-bounded,
+    percent-decoded before validation so `%2e%2e` is refused as the `..` it is,
+    restricted to a conservative character set, and finally canonicalized and
+    checked against the root so a symlink cannot escape either. Files are read per
+    request rather than cached, which is what makes a reload honest.
+  - content security policy: `default-src 'none'` with `script-src 'self'`,
+    `connect-src 'none'`, and `frame-ancestors 'none'`, sent on every packaged
+    response with `nosniff` and `no-referrer`. `apps/control-ui/vite.config.ts`
+    turns off the module-preload polyfill, because it is emitted as an inline
+    script and a future code-split build would otherwise produce a document the
+    webview refuses to run.
+  - failure: `FatalError` separates a UI failure from an engine failure and says
+    which half did not fail, which is `501` section 10. Either way the engine is
+    asked to stop before the process exits.
+  - tests: 25 unit tests in the shell, none of which need a display — traversal,
+    escape, hidden-entry, overlong-path, and directory refusals; media types;
+    re-read on reload; navigation block, external link, lookalike host, smuggled
+    address; the policy string itself; the external-open argument shape and its
+    refusal to launch anything unapproved; the two failure reports.
+  - CI: ubuntu jobs that compile the workspace install `libwebkit2gtk-4.1-dev`
+    and `libgtk-3-dev` first. Windows needs nothing.
+  - validation: `cargo xtask check` (exit 0), `cargo xtask test-integration`
+    (4 passed), `cargo test -p mirae-shell` (25 passed), `pnpm -r typecheck`,
+    `pnpm -r build` (exit 0), and a real run on Windows 11: the window opened, the
+    control UI rendered under the policy, and the handshake was accepted.
+  - manual evidence: only Windows/WebView2 was exercised on hardware. macOS and
+    Linux are covered by compilation and by the pure tests, not by a run.
+  - follow-up: the typed bridge between the page and the engine, the remaining
+    window roles from `501` section 5 (projector, detached panels, startup and
+    recovery windows), the recovery UI that `501` section 10 offers rather than
+    only reports, single-instance forwarding, native menus, and drag-and-drop
+    classification. Packaging must detect a missing WebView2 runtime and generate
+    the attribution file from `Cargo.lock` (`509`).
 
 ## Deferred Follow-Ups
 
@@ -538,7 +596,10 @@ Validation:        cargo xtask check, cargo xtask generate --check,
 Deliverables:      the ADR, the dependency records, generator support, tests.
 ```
 
-### MIR-0016 — Host the control UI in a system webview — READY
+### MIR-0016 — Host the control UI in a system webview — DONE
+
+Delivered on `feat/MIR-0016-system-webview-host`; see the sprint entry above for
+what shipped. The original ticket text follows for the record.
 
 Decided in **ADR-0068**: the shell hosts the control UI in the operating system's
 own webview (WebView2, WKWebView, WebKitGTK) through the `wry` and `tao` crates,

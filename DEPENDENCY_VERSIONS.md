@@ -304,25 +304,87 @@ Claude must not invent the future renderer, IPC, async-runtime, serialization, o
 |---|---:|---|---|
 | `serde` | `1.0.229` | MIR-0012 | Derive-based serialization for generated contracts (ADR-0067). Features: `derive` only. |
 | `serde_json` | `1.0.151` | MIR-0012 | The control-plane payload encoding chosen in ADR-0067. |
+| `tao` | `0.35.3` | MIR-0016 | The window and event loop for the desktop shell (ADR-0068). Features: `rwh_06` plus `x11` through `wry`; defaults off. |
+| `wry` | `0.55.1` | MIR-0016 | Bindings to the operating system's own webview — WebView2, WKWebView, WebKitGTK — for the control UI (ADR-0068). Features: `protocol`, `os-webview`, `x11`; defaults off. |
 
-Transitive graph accepted with the above, all pinned by `Cargo.lock`:
-`serde_derive 1.0.229`, `proc-macro2 1.0.107`, `quote 1.0.47`, `syn 3.0.3`,
-`unicode-ident 1.0.24`, `itoa 1.0.18`, `memchr 2.8.3`, `ryu`.
+Transitive graph accepted with `serde` and `serde_json`, all pinned by
+`Cargo.lock`: `serde_derive 1.0.229`, `proc-macro2 1.0.107`, `quote 1.0.47`,
+`syn 3.0.3`, `unicode-ident 1.0.24`, `itoa 1.0.18`, `memchr 2.8.3`, `ryu`.
 
-Licence review: every crate above is dual-licensed MIT or Apache-2.0, which is
-compatible with a proprietary desktop application and requires only attribution in
-the distributed notices file.
+`wry` and `tao` bring a much larger graph, which ADR-0068 anticipated and which is
+reviewed below rather than enumerated crate by crate.
 
-Security review: `serde` and `serde_json` are the de facto standard in the Rust
-ecosystem, are widely audited, and contain no `unsafe` in the paths this project
-uses. `serde_json` parses untrusted input, so callers must bound the input before
-parsing; the frame header in `01-runtime/108-ipc-protocol.md` section 4 does that,
-and `crates/runtime/runtime/src/ipc.rs` rejects an oversized frame before
-allocating. Deserialization executes no schema-supplied code, which is one of the
-criteria ADR-0067 was chosen against.
+### `wry` and `tao` graph review (MIR-0016)
 
-Not yet approved, and each needs its own ticket: `wry` and `tao` for the desktop
-window (ADR-0068), and any renderer, async-runtime, or FFmpeg binding.
+`Cargo.lock` holds **292** packages, because a lockfile covers every platform and
+every optional feature. What is actually compiled is smaller, and it is what
+matters for licence and attack surface:
+
+| Target | Third-party crates compiled into the shell |
+|---|---:|
+| `x86_64-pc-windows-msvc` | 85 |
+| `aarch64-apple-darwin` | 85 |
+| `x86_64-unknown-linux-gnu` | 130 |
+
+Linux is larger because GTK, GLib, Pango, Cairo, and WebKitGTK are reached
+through `-sys` binding crates, while Windows and macOS reach their webview
+through the `windows` and `objc2` binding families the platform already uses.
+
+Reproduce the counts with
+`cargo tree -p mirae-shell --target <triple> --edges normal,build`, and the
+licences with `cargo metadata --format-version 1`.
+
+**Licence review.** Every crate compiled on the three supported targets is
+permissive. The breakdown, by declared SPDX expression:
+
+- `MIT OR Apache-2.0` and its spellings — the large majority on every target;
+- `Unicode-3.0` — 18 ICU crates, reached through `url` → `idna`. The Unicode
+  licence is permissive and requires attribution only;
+- `Zlib OR Apache-2.0 OR MIT`, `Unlicense OR MIT`, `BSD-3-Clause OR MIT OR
+  Apache-2.0`, `CC0-1.0 OR MIT-0 OR Apache-2.0`, `Apache-2.0 WITH
+  LLVM-exception` — each offers a permissive option this project takes;
+- `MPL-2.0` — **one** crate in a compiled graph: `option-ext 0.2.0`, on macOS and
+  Linux only, reached through `dirs-sys` → `dirs`. MPL-2.0 is file-level
+  copyleft: it obliges publication of modifications to *its own files*, and
+  Mirae modifies none. It does not reach into the rest of the binary.
+
+The other MPL-2.0 crates in the lockfile — `cssparser`, `cssparser-macros`,
+`dtoa-short`, `selectors` — belong to `wry` features that are switched off and
+appear in no compiled graph. Turning a `wry` feature on requires re-running this
+review.
+
+Attribution: every licence above requires notice text in the distributed
+attribution file, which packaging (`509-updates-packaging-and-signing.md`) must
+generate from `Cargo.lock` rather than by hand.
+
+**Security review.** Three points, each of which is why this graph is acceptable
+rather than merely large:
+
+1. **No bundled browser.** `wry` binds an engine the operating system ships and
+   services. A webview security fix arrives through Windows Update, macOS
+   updates, or the distribution's WebKitGTK package, not through a Mirae
+   release. That is the central trade in ADR-0068, and it inverts the usual
+   dependency risk: the largest attack surface here is the one Mirae does not
+   have to patch.
+2. **`unsafe` lives in the bindings.** `wry`, `tao`, `windows`, `objc2`, and the
+   GTK `-sys` crates are FFI and are `unsafe` by construction. Mirae adds no
+   `unsafe` of its own, and the shell touches these crates from exactly one
+   module, `apps/desktop-shell/src/ui_host.rs`, so the reviewed surface is a
+   file rather than a crate.
+3. **The webview is treated as untrusted input.** The custom protocol handler
+   receives a page-chosen path and the navigation handler a page-chosen URL.
+   Both are validated by pure code in `apps/desktop-shell/src/assets.rs` and
+   `apps/desktop-shell/src/navigation.rs`, before any filesystem or process
+   call, and both are bounded. `501` section 4's policy is enforced there.
+
+**Build and compatibility.** Windows needs no extra tooling: WebView2 ships with
+Windows 11 and its bindings are header-free. Linux needs `libwebkit2gtk-4.1-dev`
+and `libgtk-3-dev`, which CI installs before any job that compiles the workspace.
+Packaging must detect a missing WebView2 runtime and guide the user, which
+ADR-0068 records as a consequence and `509` owns.
+
+Not yet approved, and each needs its own ticket: any renderer, async-runtime, or
+FFmpeg binding.
 
 ---
 

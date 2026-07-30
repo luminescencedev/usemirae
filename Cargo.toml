@@ -34,3 +34,18 @@ unimplemented = "warn"
 # Introduced by MIR-0012 for the control-plane wire format decided in ADR-0067.
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.151"
+
+# Introduced by MIR-0016 for the desktop window and system webview decided in
+# ADR-0068. `wry` binds the operating system's own webview and `tao` owns the
+# window and the event loop; neither bundles a browser engine. Default features
+# are off so no clipboard, tray, file-dialog, or devtools surface is compiled in
+# that `501` sections 3 and 4 have not asked for. `x11` stays on: dropping it
+# would silently make the Linux build Wayland-only, and `504-linux-platform.md`
+# supports both. The two versions are a matched pair: `wry 0.55` requires
+# `tao 0.35`.
+tao = { version = "=0.35.3", default-features = false, features = ["rwh_06"] }
+wry = { version = "=0.55.1", default-features = false, features = [
+    "protocol",
+    "os-webview",
+    "x11",
+] }

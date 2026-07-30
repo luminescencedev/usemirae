@@ -14,5 +14,11 @@ mirae-contracts = { path = "../../crates/foundation/contracts" }
 mirae-runtime = { path = "../../crates/runtime/runtime" }
 serde_json = { workspace = true }
 
+# The window and the system webview (ADR-0068). They stay in this application
+# crate: no library may depend on an operating-system SDK (804 section 3), and
+# nothing outside the shell hosts a window.
+tao = { workspace = true }
+wry = { workspace = true }
+
 [lints]
 workspace = true

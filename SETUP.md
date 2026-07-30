@@ -601,10 +601,15 @@ cargo run --package mirae-engine
 
 Le comportement exact dépend du mode de lancement. Le moteur peut publier son état de démarrage puis s’arrêter s’il n’est pas supervisé.
 
-27. Lancer le shell actuel
+27. Lancer le shell avec sa fenêtre
 
-Avant la fin de MIR-0016 :
+Depuis MIR-0016, le shell ouvre une vraie fenêtre et il faut donc lui indiquer où se trouve l’interface compilée. Construis-la d’abord :
 
+pnpm --filter @mirae/control-ui build
+
+Puis lance le shell :
+
+$env:MIRAE_UI_PATH = "C:\dev\usemirae\apps\control-ui\dist"
 cargo run --package mirae-shell
 
 Le shell doit :
@@ -617,21 +622,26 @@ effectuer le handshake authentifié ;
 
 afficher une confirmation ;
 
-arrêter proprement le moteur puisqu’aucune fenêtre ne garde encore le shell ouvert.
+ouvrir la fenêtre de contrôle et y afficher l’interface ;
+
+arrêter proprement le moteur à la fermeture de la fenêtre.
 
 Exemple :
 
+control UI served from C:\dev\usemirae\apps\control-ui\dist
 handshake accepted: protocol=1.0 session=... max_frame=1048576 launches=1
 
-Après MIR-0016, la fenêtre native gardera l’event loop ouverte.
+Sans MIRAE_UI_PATH, le shell cherche un dossier ui à côté de l’exécutable, ce qui correspond à la disposition d’un build packagé. S’il ne trouve ni l’un ni l’autre, il le dit et s’arrête : c’est une panne d’interface, pas une panne de moteur, et le message le précise.
+
+F5 recharge la fenêtre. Les ressources sont relues sur le disque à chaque requête, donc un nouveau build apparaît sans relancer le shell.
 
 28. Lancer l’interface React séparément
 
 pnpm --filter @mirae/control-ui dev
 
-Ouvre l’adresse locale indiquée par Vite.
+Ouvre l’adresse locale indiquée par Vite. Ce mode reste utile pour le développement de l’interface avec rechargement à chaud ; la fenêtre du shell, elle, sert toujours des ressources packagées locales (501 invariant 2).
 
-Tant que le pont shell ↔ interface n’est pas terminé, l’UI peut afficher que le moteur est indisponible. Ce comportement est volontaire : l’interface ne doit jamais simuler un état moteur qu’elle ne peut pas observer.
+Tant que le pont shell ↔ interface n’est pas terminé, l’UI affiche que le moteur est indisponible, dans les deux modes. Ce comportement est volontaire : l’interface ne doit jamais simuler un état moteur qu’elle ne peut pas observer.
 
 Partie G — Reprendre MIR-0016 avec Claude Code
 
@@ -661,6 +671,8 @@ apps/desktop-shell/Cargo.toml
 Cargo.toml
 
 31. Prompt prêt à donner à Claude
+
+Historique : MIR-0016 a été livré sur la machine dédiée avec ce prompt. Il est conservé comme modèle pour un ticket suivant, pas comme travail restant.
 
 Continue MIR-0016 on the current branch.
 

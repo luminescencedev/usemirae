@@ -13,6 +13,11 @@ export default defineConfig({
   build: {
     target: "es2023",
     sourcemap: true,
+    // The shell serves this bundle under a content security policy with
+    // `script-src 'self'` (501 section 4), and the module-preload polyfill is
+    // emitted as an inline script. Keeping it off means a future code-split
+    // build cannot silently produce a document the webview refuses to run.
+    modulePreload: { polyfill: false },
   },
   test: {
     environment: "jsdom",

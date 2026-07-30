@@ -9,26 +9,34 @@
 //!
 //! # What exists today
 //!
-//! Launch, readiness handoff, supervision, and bounded restart. The supervision
-//! logic lives in `mirae-runtime` so it is testable without spawning processes;
-//! this binary provides the real process launcher and the command line.
+//! Launch, readiness handoff, supervision, and bounded restart, and the main
+//! control window hosting the packaged control UI in the operating system's own
+//! webview (ADR-0068). The supervision logic lives in `mirae-runtime` so it is
+//! testable without spawning processes; this binary provides the real process
+//! launcher, the command line, and the window.
 //!
 //! # What does not
 //!
-//! No window and no embedded webview. `501` section 3 requires a native webview
-//! hosting locally packaged resources, and every candidate is either unapproved by
-//! `DEPENDENCY_VERSIONS.md` section 14 or a new Rust dependency that must clear
-//! section 11 first. Choosing one is a ticket with an ADR, not a decision to make
-//! quietly here, so the shell currently reports to the terminal and the control UI
-//! runs through its own dev server.
+//! The other window roles in `501` section 5 — projector, detached panels,
+//! startup and recovery windows — and the typed bridge that will carry commands
+//! between the page and the engine. The webview today loads packaged resources
+//! and nothing else reaches it.
 //!
 //! Authentication of the handoff is `MIR-0012`: the credential is created and
 //! passed, but the engine does not verify it yet.
+
+mod assets;
+mod external;
+mod navigation;
+mod ui_host;
 
 use std::io::Write as _;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+use crate::assets::UiResources;
+use crate::ui_host::{EngineHealth, FatalError};
 
 use mirae_contracts::generated::{
     EngineReadiness, Hello, HelloRole, PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR, Reject,
@@ -84,28 +92,47 @@ fn main() -> std::process::ExitCode {
     run()
 }
 
-/// Launch, supervise, report, and stop.
+/// Launch, supervise, host the control UI, and stop.
 fn run() -> std::process::ExitCode {
+    match session() {
+        Ok(()) => std::process::ExitCode::SUCCESS,
+        Err(failure) => {
+            let mut err = std::io::stderr().lock();
+            let _ = writeln!(err, "{}", failure.report());
+            std::process::ExitCode::FAILURE
+        }
+    }
+}
+
+/// One shell session, from engine launch to window close.
+///
+/// The order is `501` section 6: credential, launch, authenticated readiness,
+/// then the UI. The packaged resources are located first because failing to find
+/// them is a UI failure that should not cost the user an engine launch.
+fn session() -> Result<(), FatalError> {
+    let resources = UiResources::locate().map_err(FatalError::Ui)?;
+
+    {
+        // Which directory is being served answers most "why is the UI stale"
+        // questions before they are asked. It is a path, not a secret.
+        let mut out = std::io::stdout().lock();
+        let _ = writeln!(out, "control UI served from {}", resources.root().display());
+    }
+
     let Some(engine_path) = engine_path() else {
-        let mut err = std::io::stderr().lock();
-        let _ = writeln!(
-            err,
+        return Err(FatalError::Engine(format!(
             "could not locate the engine executable; set {ENGINE_PATH_VARIABLE}"
-        );
-        return std::process::ExitCode::FAILURE;
+        )));
     };
 
     let credential = LaunchCredential::placeholder(seed());
     let mut supervisor = Supervisor::new(ProcessLauncher::new(engine_path), RestartPolicy::DEFAULT);
 
     if !supervisor.start(&credential, Instant::now()) {
-        let mut err = std::io::stderr().lock();
-        let _ = writeln!(
-            err,
+        return Err(FatalError::Engine(format!(
             "could not launch the engine: {}",
             supervisor.last_reason().unwrap_or("no reason given")
-        );
-        return std::process::ExitCode::FAILURE;
+        )));
     }
 
     // 501 section 6 point 3: wait for *authenticated* readiness. The handshake is
@@ -134,7 +161,7 @@ fn run() -> std::process::ExitCode {
         }
     }
 
-    let succeeded = match outcome {
+    match outcome {
         Ok(welcome) => {
             let mut out = std::io::stdout().lock();
             let _ = writeln!(
@@ -146,28 +173,36 @@ fn run() -> std::process::ExitCode {
                 welcome.max_frame_bytes,
                 supervisor.launches()
             );
-            true
         }
         Err(reason) => {
-            let mut err = std::io::stderr().lock();
-            let _ = writeln!(
-                err,
-                "handshake failed: {reason} (supervision state {})",
-                supervisor.state()
-            );
-            false
-        }
-    };
+            let state = supervisor.state();
+            supervisor.stop();
 
-    // No window to keep open, so the shell stops the engine and exits rather than
-    // idling. The wait loop arrives with the UI host in MIR-0016.
+            return Err(FatalError::Engine(format!(
+                "handshake failed: {reason} (supervision state {state})"
+            )));
+        }
+    }
+
+    // 501 section 6 point 4: the UI is created once the engine has answered.
+    // Supervision keeps running underneath the window, so a crash reaches the
+    // user as an engine failure rather than as a window that stops responding.
+    let hosted = ui_host::run(resources, || {
+        match supervisor.poll(&credential, Instant::now()) {
+            SupervisionState::GaveUp => EngineHealth::Failed(format!(
+                "the engine stopped and the restart budget is exhausted after {} launches: {}",
+                supervisor.launches(),
+                supervisor.last_reason().unwrap_or("no reason given")
+            )),
+            _ => EngineHealth::Running,
+        }
+    });
+
+    // Whatever ended the session, the engine is asked to stop rather than left
+    // behind: `501` section 6 point 7 makes shutdown the shell's job.
     supervisor.stop();
 
-    if succeeded {
-        std::process::ExitCode::SUCCESS
-    } else {
-        std::process::ExitCode::FAILURE
-    }
+    hosted
 }
 
 /// Locate the engine executable.

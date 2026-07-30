@@ -554,6 +554,24 @@ follow-ups; and distinguish a webview failure from an engine failure in the UI
 (doc 501 section 10).
 
 Depends on MIR-0012 for the typed bridge to carry the authenticated handshake.
+
+Findings from a first attempt, so the next one does not repeat them:
+
+- the correct pair is `wry 0.55.1` with `tao 0.35.3`. `wry 0.53.x` pairs with
+  `tao 0.34.x`, and mixing branches was the first wrong turn. Suggested features:
+  `wry` with `default-features = false, features = ["protocol", "os-webview"]`,
+  `tao` with `default-features = false, features = ["rwh_06"]`. Both compile.
+- adding `wry` takes the lockfile from 10 crates to roughly 320, which is the
+  cost ADR-0068 anticipated and the reason its section 11 review matters.
+- CI will need Linux WebKitGTK development packages before these dependencies can
+  be committed, or the ubuntu jobs will fail to build the shell. Add that to the
+  workflow in the same commit as the dependencies.
+- a long detour was spent diagnosing `error[E0463]: can't find crate for
+  time_macros`. It was not a dependency problem: Windows Smart App Control was
+  blocking execution of locally compiled, unsigned binaries, which made a
+  procedural macro artifact unavailable. `SETUP.md` documents the symptom and the
+  fix. Any of `never executed`, `os error 4551`, or a missing proc-macro crate has
+  that same cause.
 Required tests come from doc 501 section 12: UI reload, navigation block, external
 link, and the fatal recovery flow.
 

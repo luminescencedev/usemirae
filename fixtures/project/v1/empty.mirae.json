@@ -1,0 +1,21 @@
+{
+  "app": {
+    "minimumVersion": "0.0.0",
+    "savedByVersion": "0.0.0"
+  },
+  "createdAt": "2026-01-01T00:00:00Z",
+  "features": [],
+  "format": "mirae-project",
+  "integrity": {
+    "algorithm": "sha256",
+    "contentHash": "51fd0b6b58a06ab156259c2cfb5d10d26edcad408ccc02eacbb085cb1988fa4d"
+  },
+  "lastSavedAt": "2026-01-02T03:04:05Z",
+  "project": {
+    "sceneItems": [],
+    "scenes": [],
+    "sources": []
+  },
+  "projectId": "01000000-0000-4000-8000-000000000000",
+  "schemaVersion": 1
+}

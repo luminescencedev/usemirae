@@ -23,6 +23,7 @@
 pub mod canonical;
 pub mod create;
 pub mod dirty;
+pub mod fixtures;
 pub mod mapping;
 pub mod open;
 pub mod recovery;
@@ -46,6 +47,8 @@ pub use save::{
 
 #[cfg(test)]
 mod fault_tests;
+#[cfg(test)]
+mod fixture_tests;
 #[cfg(test)]
 mod open_tests;
 #[cfg(test)]

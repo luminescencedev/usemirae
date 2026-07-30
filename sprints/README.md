@@ -6,7 +6,7 @@ committed on `main` and `cargo xtask check` passes.
 | Sprint | File | State |
 |---|---|---|
 | Sprint 0 — Repository Foundation | [sprint-0.md](sprint-0.md) | complete |
-| Sprint 1 — Project Kernel | [sprint-1.md](sprint-1.md) | in progress |
+| Sprint 1 — Project Kernel | [sprint-1.md](sprint-1.md) | complete |
 
 ## How these files relate to the rest
 

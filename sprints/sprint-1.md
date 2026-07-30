@@ -1,6 +1,6 @@
 # Sprint 1 — Project Kernel
 
-**State:** in progress  
+**State:** complete  
 **Canonical scope:** `docs/08-development/814-bootstrap-ticket-backlog.md`, Sprint 1  
 **Roadmap phase:** `813-implementation-roadmap.md` section 3
 
@@ -54,7 +54,7 @@ The bridge, then the flow in the window MIR-0016 built. The control UI reports
 What ordinary tests do not reach.
 
 - [x] MIR-0114 — Add interrupted-save fault test
-- [ ] MIR-0115 — Add project round-trip compatibility fixture
+- [x] MIR-0115 — Add project round-trip compatibility fixture
 
 ## Order
 

@@ -25,6 +25,11 @@ version = "0.0.0"
 [[package]]
 name = "mirae-engine"
 version = "0.0.0"
+dependencies = [
+ "mirae-contracts",
+ "mirae-observability",
+ "mirae-runtime",
+]
 
 [[package]]
 name = "mirae-errors"
@@ -104,6 +109,11 @@ version = "0.0.0"
 [[package]]
 name = "mirae-runtime"
 version = "0.0.0"
+dependencies = [
+ "mirae-contracts",
+ "mirae-errors",
+ "mirae-observability",
+]
 
 [[package]]
 name = "mirae-scene"

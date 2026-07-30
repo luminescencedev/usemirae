@@ -6,5 +6,13 @@ edition.workspace = true
 rust-version.workspace = true
 publish = false
 
+[dependencies]
+# Foundation only: generated contracts for readiness, structured errors, and
+# tracing. The runtime layer sits above foundation and below the applications
+# (804 section 2).
+mirae-contracts = { path = "../../foundation/contracts" }
+mirae-errors = { path = "../../foundation/errors" }
+mirae-observability = { path = "../../foundation/observability" }
+
 [lints]
 workspace = true

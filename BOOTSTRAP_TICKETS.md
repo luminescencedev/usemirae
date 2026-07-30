@@ -233,7 +233,50 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
     bundle work, and crash preservation to crash reporting.
   - follow-up: no global logger or macro exists, so a tracer is passed explicitly;
     spans from doc 606 section 3 are not implemented, only events
-- [ ] MIR-0009 — Build engine process skeleton
+- [x] MIR-0009 — Build engine process skeleton
+  - status: done
+  - branch: `main` (trunk-based; no pull request)
+  - crate: `crates/runtime/runtime` (`mirae-runtime`) on the three foundation
+    crates only; `apps/engine` assembles them and holds no domain logic
+  - lifecycle: all eleven states from doc 102 section 2 with the transition graph
+    from section 3 enforced. `LifecycleCoordinator` is the single serialized
+    authority: services report health and never transition the engine themselves
+    (section 16). An illegal transition is refused and counted, never applied.
+  - services: registration order is the dependency order from section 5, shutdown
+    reverses it. An optional service that is unavailable impairs the engine
+    without failing it (invariant 5); a mandatory one that fails ends startup and
+    names the service.
+  - readiness: built from the generated `mirae://ipc/v1/engine-readiness`
+    contract, so the engine and any client share one vocabulary. The lifecycle
+    graph only allows `Degraded` from `Running`, so a `Ready` engine missing an
+    optional capability reports `ready` with the impairment in `detail` rather
+    than hiding it.
+  - shutdown: every started service is asked to stop even after an earlier one
+    fails or overruns, so one bad service cannot strand the rest. Deadlines are
+    recorded, not preemptive: this crate has no executor that could cancel a
+    blocking call, which is stated in the code rather than implied.
+  - crash context: session, lifecycle state, recent states, protocol versions,
+    build id, and bounded safe diagnostics (section 13, invariant 9).
+  - binary: `cargo run --package mirae-engine` bootstraps, initializes, prints the
+    readiness contract as one JSON line, and shuts down cleanly (exit 0);
+    `--version` reports the protocol version; an unknown argument exits 1. Events
+    land in a rolling log under the system temporary directory, never beside user
+    projects (doc 606 section 9).
+  - validation: `cargo xtask check` (exit 0), `cargo test --package mirae-runtime`
+    (24 tests), `cargo test --workspace`, and a manual run of the binary showing
+    `{"state":"ready",...,"detail":"ipc_server: ..."}` plus lifecycle transitions
+    in the log file
+  - required tests from doc 102 section 15: complete startup, optional subsystem
+    unavailable, mandatory subsystem failure, shutdown timeout, lifecycle command
+    rejection, and crash context redaction are covered. Project activation and
+    rollback, degraded-to-running recovery beyond the transition test, shutdown
+    while an output is active, and cancellation during output start need
+    subsystems that do not exist yet.
+  - follow-up: no IPC server, so the process reports and exits instead of waiting
+    (MIR-0012); services are `StubService` values until the real subsystems land;
+    the session id is derived from the clock and process id, and a
+    cryptographically random one belongs to the platform layer with the launch
+    credentials
 - [ ] MIR-0010 — Build native shell skeleton
 - [ ] MIR-0011 — Build React control UI skeleton
 - [ ] MIR-0012 — Add authenticated IPC handshake

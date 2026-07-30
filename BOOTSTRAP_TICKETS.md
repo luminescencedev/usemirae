@@ -194,7 +194,45 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
   - follow-up: no concrete error codes are defined, since each subsystem owns its
     own; a code registry with cross-subsystem uniqueness checks may be worth a
     ticket once several subsystems declare codes
-- [ ] MIR-0008 — Create structured tracing foundation
+- [x] MIR-0008 — Create structured tracing foundation
+  - status: done
+  - branch: `main` (trunk-based; no pull request)
+  - crate: `crates/foundation/observability` (`mirae-observability`), `std` plus
+    `mirae-errors` only. That dependency stays inside the foundation layer, so it
+    crosses no boundary in doc 804 section 2, and `cargo xtask policy` confirms it.
+  - identity: `EngineSessionId`, `ProcessRole`, `ProcessIdentity`, and
+    `ClockOrigin`, which maps monotonic nanoseconds to the wall clock so ordering
+    survives a clock adjustment. A session learned later, such as from a
+    handshake, is adopted without rebuilding the tracer.
+  - fields: `RedactionClass` from doc 606 section 5 is part of the field rather
+    than a sink decision, so the same field cannot be safe in one place and unsafe
+    in another. Secret and media-content fields are never written and each attempt
+    is counted; private values are hashed with a stable FNV-1a so occurrences
+    correlate without revealing the value; text is redacted and truncated when the
+    field is built.
+  - volume: per-event-name token buckets and consecutive-duplicate suppression,
+    with counters for suppressed, rate-limited, and untracked events. Time is
+    passed in, so every decision is tested without sleeping.
+  - sinks: `RollingFileSink` with size and file-count retention, plus null,
+    memory, and deliberately failing sinks. A write failure is counted and never
+    propagated: a logging failure must not fail its caller.
+  - real-time: `RealtimeCounters` is atomics only, for audio and capture callbacks
+    that must not format or write synchronously (606 section 8). A later tick
+    reads and resets them and emits one ordinary event.
+  - format: one JSON object per line carrying timestamp, monotonic time, level,
+    subsystem, event name, session, role, build, thread, optional correlation, and
+    fields, so per-process files can be merged by tooling (606 section 7).
+  - validation: `cargo xtask check` (exit 0), `cargo test --package
+    mirae-observability` (37 tests), `cargo test --workspace`,
+    `cargo clippy --workspace --all-targets --all-features` — all exit 0
+  - required tests from doc 606 section 12: structured schema, secret field
+    rejection, rate limiting, duplicate suppression, log rotation, disk-full
+    behavior, audio callback counters, and multi-process merge are covered.
+    Correlation propagation is covered within a process; across IPC it belongs to
+    MIR-0012. Extension quota belongs to the SDK, redacted export to the support
+    bundle work, and crash preservation to crash reporting.
+  - follow-up: no global logger or macro exists, so a tracer is passed explicitly;
+    spans from doc 606 section 3 are not implemented, only events
 - [ ] MIR-0009 — Build engine process skeleton
 - [ ] MIR-0010 — Build native shell skeleton
 - [ ] MIR-0011 — Build React control UI skeleton

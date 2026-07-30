@@ -6,5 +6,11 @@ edition.workspace = true
 rust-version.workspace = true
 publish = false
 
+[dependencies]
+# Foundation-internal: correlation ids, subsystem ids, and the redaction
+# primitives that keep fields safe. Both crates are in the foundation layer, so
+# this does not cross a boundary (804 section 2).
+mirae-errors = { path = "../errors" }
+
 [lints]
 workspace = true

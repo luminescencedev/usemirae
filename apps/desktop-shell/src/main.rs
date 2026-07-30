@@ -26,6 +26,7 @@
 //! passed, but the engine does not verify it yet.
 
 mod assets;
+mod bridge;
 mod external;
 mod navigation;
 mod ui_host;
@@ -36,6 +37,7 @@ use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crate::assets::UiResources;
+use crate::bridge::EngineView;
 use crate::ui_host::{EngineHealth, FatalError};
 
 use mirae_contracts::generated::{
@@ -161,7 +163,7 @@ fn session() -> Result<(), FatalError> {
         }
     }
 
-    match outcome {
+    let (session_id, protocol_major, protocol_minor) = match outcome {
         Ok(welcome) => {
             let mut out = std::io::stdout().lock();
             let _ = writeln!(
@@ -173,6 +175,12 @@ fn session() -> Result<(), FatalError> {
                 welcome.max_frame_bytes,
                 supervisor.launches()
             );
+
+            (
+                welcome.engine_session_id,
+                welcome.protocol_major,
+                welcome.protocol_minor,
+            )
         }
         Err(reason) => {
             let state = supervisor.state();
@@ -182,12 +190,22 @@ fn session() -> Result<(), FatalError> {
                 "handshake failed: {reason} (supervision state {state})"
             )));
         }
-    }
+    };
+
+    // What the bridge will report to the page. Built from the handshake the
+    // shell actually completed, so `501` section 6 holds: the shell never
+    // reports engine state it did not observe.
+    let engine = EngineView::Connected {
+        session_id: session_id.clone(),
+        protocol_major,
+        protocol_minor,
+        state_generation: 0,
+    };
 
     // 501 section 6 point 4: the UI is created once the engine has answered.
     // Supervision keeps running underneath the window, so a crash reaches the
     // user as an engine failure rather than as a window that stops responding.
-    let hosted = ui_host::run(resources, || {
+    let hosted = ui_host::run(resources, engine, || {
         match supervisor.poll(&credential, Instant::now()) {
             SupervisionState::GaveUp => EngineHealth::Failed(format!(
                 "the engine stopped and the restart budget is exhausted after {} launches: {}",

@@ -17,7 +17,7 @@ use std::borrow::Cow;
 use std::time::{Duration, Instant};
 
 use tao::event::{Event, StartCause, WindowEvent};
-use tao::event_loop::{ControlFlow, EventLoop};
+use tao::event_loop::{ControlFlow, EventLoopBuilder};
 use tao::keyboard::KeyCode;
 use tao::platform::run_return::EventLoopExtRunReturn as _;
 use tao::window::WindowBuilder;
@@ -25,6 +25,7 @@ use wry::http::{Request, Response, header};
 use wry::{NewWindowResponse, WebViewBuilder};
 
 use crate::assets::{Resolution, UiResources};
+use crate::bridge::{self, EngineView};
 use crate::external::open_in_browser;
 use crate::navigation::{APP_SCHEME, CONTENT_SECURITY_POLICY, Decision, START_URL, decide};
 
@@ -42,6 +43,18 @@ const MINIMUM_WINDOW_SIZE: (f64, f64) = (960.0, 600.0);
 /// The loop otherwise sleeps, so this is the longest a crash can go unreported
 /// while the window is idle.
 const ENGINE_POLL_INTERVAL: Duration = Duration::from_millis(250);
+
+/// A message the window loop has to act on.
+///
+/// The IPC handler runs off the loop and cannot touch the webview, so it sends
+/// one of these through the event-loop proxy and the loop does the talking. That
+/// is not ceremony: a webview is not `Send`, and the alternative would be
+/// sharing it across threads by force.
+#[derive(Debug)]
+pub(crate) enum HostEvent {
+    /// The page sent a bridge message.
+    BridgeRequest(String),
+}
 
 /// What the shell believes about the engine, asked from the window loop.
 #[derive(Debug, PartialEq, Eq)]
@@ -87,9 +100,11 @@ impl FatalError {
 /// that there is a window.
 pub(crate) fn run(
     resources: UiResources,
+    engine: EngineView,
     mut engine_health: impl FnMut() -> EngineHealth,
 ) -> Result<(), FatalError> {
-    let mut event_loop = EventLoop::new();
+    let mut event_loop = EventLoopBuilder::<HostEvent>::with_user_event().build();
+    let proxy = event_loop.create_proxy();
 
     let window = WindowBuilder::new()
         .with_title(WINDOW_TITLE)
@@ -117,6 +132,13 @@ pub(crate) fn run(
             }
             Decision::Block(_) => false,
         })
+        // 501 section 13: the bridge is the only thing the page can call, and
+        // it is typed. The handler forwards the raw message and decides nothing:
+        // parsing, bounding, and refusing all happen in `bridge`, where they are
+        // tested without a window.
+        .with_ipc_handler(move |request| {
+            let _ = proxy.send_event(HostEvent::BridgeRequest(request.into_body()));
+        })
         // `window.open` is the same decision reached by another route.
         .with_new_window_req_handler(|url, _features| match decide(&url) {
             Decision::OpenExternally => {
@@ -143,6 +165,7 @@ pub(crate) fn run(
         })?;
 
     let mut failure: Option<FatalError> = None;
+    let mut engine = engine;
 
     event_loop.run_return(|event, _target, control_flow| {
         *control_flow = ControlFlow::WaitUntil(Instant::now() + ENGINE_POLL_INTERVAL);
@@ -150,9 +173,19 @@ pub(crate) fn run(
         match event {
             Event::NewEvents(StartCause::ResumeTimeReached { .. }) => {
                 if let EngineHealth::Failed(reason) = engine_health() {
+                    // Report disconnected before exiting. The window is closing,
+                    // but a bridge request already in flight still gets answered,
+                    // and `501` section 6 forbids answering it with session
+                    // details the shell can no longer observe.
+                    engine = EngineView::Disconnected;
                     failure = Some(FatalError::Engine(reason));
                     *control_flow = ControlFlow::Exit;
                 }
+            }
+            Event::UserEvent(HostEvent::BridgeRequest(message)) => {
+                let response = bridge::handle(&message, &engine);
+                let script = bridge::delivery_script(&response);
+                let _ = webview.evaluate_script(&script);
             }
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,

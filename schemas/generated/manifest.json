@@ -13,6 +13,24 @@
   ],
   "contracts": [
     {
+      "id": "mirae://ipc/v1/bridge-request",
+      "title": "BridgeRequest",
+      "domain": "ipc",
+      "version": "v1",
+      "typeName": "BridgeRequest",
+      "fields": 2,
+      "path": "schemas/ipc/v1/bridge-request.schema.json"
+    },
+    {
+      "id": "mirae://ipc/v1/bridge-response",
+      "title": "BridgeResponse",
+      "domain": "ipc",
+      "version": "v1",
+      "typeName": "BridgeResponse",
+      "fields": 8,
+      "path": "schemas/ipc/v1/bridge-response.schema.json"
+    },
+    {
       "id": "mirae://ipc/v1/engine-readiness",
       "title": "Engine readiness",
       "domain": "ipc",

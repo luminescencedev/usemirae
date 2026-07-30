@@ -10,7 +10,7 @@
  */
 
 import { EngineConnection } from "@mirae/client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { EngineStatus } from "../features/diagnostics/EngineStatus";
 import { createEngineTransport } from "../engine-transport";
@@ -22,6 +22,19 @@ export function App() {
   const [connection] = useState(
     () => new EngineConnection(createEngineTransport()),
   );
+
+  // Connect on mount. Until MIR-0116 there was nothing to connect to, so the
+  // panel sat in its idle state waiting for a button nobody had a reason to
+  // press; now the shell answers, and a control UI that shows the engine as
+  // disconnected until asked would be reporting its own inaction as engine
+  // state.
+  useEffect(() => {
+    void connection.connect();
+
+    return () => {
+      connection.disconnect();
+    };
+  }, [connection]);
 
   return (
     <main

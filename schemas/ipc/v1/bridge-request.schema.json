@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mirae://ipc/v1/bridge-request",
+  "title": "BridgeRequest",
+  "description": "What the control UI may ask the shell for. A closed set: 501 section 13 keeps the bridge narrow, and a page that can name only these cannot ask for anything else, whatever it has been persuaded to run.",
+  "type": "object",
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "maxLength": 64,
+      "description": "Correlates this request with its answer. Chosen by the page, so it is bounded and echoed back rather than interpreted."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["engineStatus", "projectState"],
+      "description": "What is being asked. An unknown value is refused rather than routed, so adding a capability means adding it here and regenerating both sides."
+    }
+  },
+  "required": ["requestId", "kind"],
+  "additionalProperties": false
+}

@@ -6,6 +6,63 @@
  * `schemas/`, and verify with `cargo xtask generate --check`.
  */
 
+/** What is being asked. An unknown value is refused rather than routed, so adding a capability means adding it here and regenerating both sides. */
+export type BridgeRequestKind =
+  | "engineStatus"
+  | "projectState";
+
+/**
+ * BridgeRequest.
+ *
+ * What the control UI may ask the shell for. A closed set: 501 section 13 keeps the bridge narrow, and a page that can name only these cannot ask for anything else, whatever it has been persuaded to run.
+ *
+ * Canonical schema: `mirae://ipc/v1/bridge-request`.
+ */
+export interface BridgeRequest {
+  /** Correlates this request with its answer. Chosen by the page, so it is bounded and echoed back rather than interpreted. */
+  readonly requestId: string;
+  /** What is being asked. An unknown value is refused rather than routed, so adding a capability means adding it here and regenerating both sides. */
+  readonly kind: BridgeRequestKind;
+}
+
+/** Maximum accepted length of `requestId`, for bounded decoding. */
+export const BRIDGE_REQUEST_REQUEST_ID_MAX_LENGTH = 64;
+
+/**
+ * BridgeResponse.
+ *
+ * The shell's answer to a control-UI request. It carries what the UI needs in order to show engine state honestly, including the case where the shell knows nothing because the engine is gone (501 section 10).
+ *
+ * Canonical schema: `mirae://ipc/v1/bridge-response`.
+ */
+export interface BridgeResponse {
+  /** The request this answers, echoed back verbatim. */
+  readonly requestId: string;
+  /** Whether the request was answered. False carries an error code and no payload. */
+  readonly ok: boolean;
+  /** Why the request was refused, as a stable category rather than a message. Empty when ok. */
+  readonly errorCode: string;
+  /** Whether the shell currently holds an authenticated engine connection. False is reported as false, never as stale detail: 501 section 6 forbids the shell fabricating engine state while disconnected. */
+  readonly engineConnected: boolean;
+  /** The engine session, when connected. Empty otherwise, so a client cannot mistake a previous session for the current one. */
+  readonly engineSessionId: string;
+  /** Negotiated protocol major version, or zero when not connected. */
+  readonly protocolMajor: number;
+  /** Negotiated protocol minor version, or zero when not connected. */
+  readonly protocolMinor: number;
+  /** The committed state generation the shell last observed, or zero when it has observed none. */
+  readonly stateGeneration: number;
+}
+
+/** Maximum accepted length of `requestId`, for bounded decoding. */
+export const BRIDGE_RESPONSE_REQUEST_ID_MAX_LENGTH = 64;
+
+/** Maximum accepted length of `errorCode`, for bounded decoding. */
+export const BRIDGE_RESPONSE_ERROR_CODE_MAX_LENGTH = 64;
+
+/** Maximum accepted length of `engineSessionId`, for bounded decoding. */
+export const BRIDGE_RESPONSE_ENGINE_SESSION_ID_MAX_LENGTH = 64;
+
 /** Lifecycle state. `degraded` means the engine is serving requests with reduced capability and the detail field explains what is missing. */
 export type EngineReadinessState =
   | "starting"
@@ -374,6 +431,8 @@ export const RECOVERY_RECORD_APP_VERSION_MAX_LENGTH = 32;
 
 /** Every contract id in this build, sorted. */
 export const CONTRACT_IDS = [
+  "mirae://ipc/v1/bridge-request",
+  "mirae://ipc/v1/bridge-response",
   "mirae://ipc/v1/engine-readiness",
   "mirae://ipc/v1/hello",
   "mirae://ipc/v1/protocol-version",

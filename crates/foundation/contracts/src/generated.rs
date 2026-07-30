@@ -4,6 +4,90 @@
 //! Regenerate with `cargo xtask generate` after changing a schema under
 //! `schemas/`, and verify with `cargo xtask generate --check`.
 
+/// BridgeRequest.
+///
+/// What the control UI may ask the shell for. A closed set: 501 section 13 keeps the bridge narrow, and a page that can name only these cannot ask for anything else, whatever it has been persuaded to run.
+///
+/// Canonical schema: `mirae://ipc/v1/bridge-request`.
+///
+/// See [`BridgeRequestKind`].
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BridgeRequest {
+    /// Correlates this request with its answer. Chosen by the page, so it is bounded and echoed back rather than interpreted.
+    ///
+    /// Bounded to 64 characters by the schema.
+    pub request_id: String,
+    /// What is being asked. An unknown value is refused rather than routed, so adding a capability means adding it here and regenerating both sides.
+    pub kind: BridgeRequestKind,
+}
+
+/// What is being asked. An unknown value is refused rather than routed, so adding a capability means adding it here and regenerating both sides.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum BridgeRequestKind {
+    /// The `engineStatus` value of `kind`.
+    #[serde(rename = "engineStatus")]
+    EngineStatus,
+    /// The `projectState` value of `kind`.
+    #[serde(rename = "projectState")]
+    ProjectState,
+}
+
+impl BridgeRequestKind {
+    /// The value as written on the wire.
+    #[must_use]
+    pub const fn as_wire_str(self) -> &'static str {
+        match self {
+            Self::EngineStatus => "engineStatus",
+            Self::ProjectState => "projectState",
+        }
+    }
+}
+
+/// Maximum accepted length of `requestId`, for bounded decoding.
+pub const BRIDGE_REQUEST_REQUEST_ID_MAX_LENGTH: usize = 64;
+
+/// BridgeResponse.
+///
+/// The shell's answer to a control-UI request. It carries what the UI needs in order to show engine state honestly, including the case where the shell knows nothing because the engine is gone (501 section 10).
+///
+/// Canonical schema: `mirae://ipc/v1/bridge-response`.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BridgeResponse {
+    /// The request this answers, echoed back verbatim.
+    ///
+    /// Bounded to 64 characters by the schema.
+    pub request_id: String,
+    /// Whether the request was answered. False carries an error code and no payload.
+    pub ok: bool,
+    /// Why the request was refused, as a stable category rather than a message. Empty when ok.
+    ///
+    /// Bounded to 64 characters by the schema.
+    pub error_code: String,
+    /// Whether the shell currently holds an authenticated engine connection. False is reported as false, never as stale detail: 501 section 6 forbids the shell fabricating engine state while disconnected.
+    pub engine_connected: bool,
+    /// The engine session, when connected. Empty otherwise, so a client cannot mistake a previous session for the current one.
+    ///
+    /// Bounded to 64 characters by the schema.
+    pub engine_session_id: String,
+    /// Negotiated protocol major version, or zero when not connected.
+    pub protocol_major: u16,
+    /// Negotiated protocol minor version, or zero when not connected.
+    pub protocol_minor: u16,
+    /// The committed state generation the shell last observed, or zero when it has observed none.
+    pub state_generation: u64,
+}
+
+/// Maximum accepted length of `requestId`, for bounded decoding.
+pub const BRIDGE_RESPONSE_REQUEST_ID_MAX_LENGTH: usize = 64;
+
+/// Maximum accepted length of `errorCode`, for bounded decoding.
+pub const BRIDGE_RESPONSE_ERROR_CODE_MAX_LENGTH: usize = 64;
+
+/// Maximum accepted length of `engineSessionId`, for bounded decoding.
+pub const BRIDGE_RESPONSE_ENGINE_SESSION_ID_MAX_LENGTH: usize = 64;
+
 /// Engine readiness.
 ///
 /// What the engine reports about its own lifecycle so the shell can decide whether to send work. No command is accepted before handshake completion, and readiness is not authorization (108 sections 6 and 11).
@@ -531,7 +615,9 @@ pub const RECOVERY_RECORD_BASE_SAVE_HASH_MAX_LENGTH: usize = 128;
 pub const RECOVERY_RECORD_APP_VERSION_MAX_LENGTH: usize = 32;
 
 /// Every contract id in this build, sorted.
-pub const CONTRACT_IDS: [&str; 13] = [
+pub const CONTRACT_IDS: [&str; 15] = [
+    "mirae://ipc/v1/bridge-request",
+    "mirae://ipc/v1/bridge-response",
     "mirae://ipc/v1/engine-readiness",
     "mirae://ipc/v1/hello",
     "mirae://ipc/v1/protocol-version",

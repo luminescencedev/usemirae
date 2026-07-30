@@ -157,9 +157,108 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
 - [ ] MIR-0010 — Build native shell skeleton
 - [ ] MIR-0011 — Build React control UI skeleton
 - [ ] MIR-0012 — Add authenticated IPC handshake
+  - blocked by: MIR-ADR-0001 (the wire format must be decided before the
+    handshake is encoded)
 - [ ] MIR-0013 — Add engine crash/restart smoke test
 - [ ] MIR-0014 — Add documentation link validator
 - [ ] MIR-0015 — Add first integration test harness
+
+## Deferred Follow-Ups
+
+Raised by completed tickets. Each is a separate ticket rather than hidden scope
+(doc 812 invariant 7). None is started.
+
+### MIR-ADR-0001 — Decide the IPC serialization format
+
+```text
+ID:                MIR-ADR-0001
+Title:             Decide the IPC serialization format
+Status:            ready
+Goal:              Choose the schema-driven serialization format for control-plane
+                   IPC, record it as an ADR, and pin the crates it needs.
+User/System Value: The engine and shell cannot exchange a single message until the
+                   wire format is chosen. Deciding it once, in the open, prevents a
+                   format being adopted implicitly by whichever ticket needs bytes
+                   first.
+Canonical Docs:    docs/01-runtime/108-ipc-protocol.md sections 4, 5, 8, 9
+                   docs/08-development/805-generated-contracts-and-schemas.md
+                   DEPENDENCY_VERSIONS.md section 11
+                   ADR-0006 (typed versioned IPC), ADR-0057 (generated contracts)
+Scope:             Evaluate candidate formats against the 108 section 5 criteria:
+                   Rust and TypeScript generation, explicit optional fields,
+                   version evolution, bounded decoding, deterministic fixtures, and
+                   no arbitrary code execution during decode. Write the ADR. Add
+                   the chosen crates through the section 11 procedure: justify,
+                   pin exactly, commit Cargo.lock, record them in a Rust dependency
+                   section of DEPENDENCY_VERSIONS.md, and run license and security
+                   review. Extend `cargo xtask generate` to emit the matching
+                   derives or codecs.
+Out of Scope:      The handshake itself, transport selection, authentication, and
+                   the data plane for media payloads.
+Dependencies:      MIR-0006 (contracts exist and are generated)
+Implementation
+Notes:             108 section 5 states the format requires an ADR if not already
+                   covered, and no existing ADR covers it. JSON is explicitly not
+                   automatically the canonical high-frequency encoding, though it
+                   may serve diagnostics and development tooling. The framing in
+                   108 section 4 is separate from the payload encoding; both must
+                   stay bounded and validated before allocation.
+Acceptance
+Criteria:          - a new ADR records the decision, the alternatives, and the
+                     trade-offs against every 108 section 5 criterion;
+                   - the chosen crates are pinned exactly and recorded in
+                     DEPENDENCY_VERSIONS.md;
+                   - `cargo xtask generate` produces the encoding support, and
+                     `--check` still detects drift;
+                   - a round-trip test proves a generated type survives encode and
+                     decode unchanged;
+                   - a decoder rejects an oversized payload before allocating for
+                     it.
+Required Tests:    round trip per contract, unknown-field behavior across a minor
+                   version bump, oversized-payload rejection, malformed-input
+                   rejection.
+Required
+Diagnostics:       decode failure counters and a safe reason string; no raw payload
+                   bytes or panic text in logs.
+Performance /
+Security Notes:    control IPC carries no media; decoding runs on untrusted input
+                   from another process, so bounds are mandatory rather than
+                   advisory.
+Validation:        cargo xtask check, cargo xtask generate --check,
+                   cargo test --workspace, pnpm -r test
+Deliverables:      the ADR, the dependency records, generator support, tests.
+```
+
+### MIR-DEPS-0001 — Resolve the ESLint 10 peer declaration
+
+`eslint-plugin-jsx-a11y@6.10.2` declares support up to ESLint 9, so
+`pnpm peers check` reports an unmet peer. Verified as cosmetic: the plugin loads
+under ESLint 10 and its rules fire, proven by a probe component that produced
+`jsx-a11y/alt-text`. Close it by upgrading to a release that declares ESLint 10, or
+record the accepted exception. Until then the zero-peer-warning item in
+`DEPENDENCY_VERSIONS.md` section 17 cannot be ticked.
+
+### MIR-TOOLING-0001 — Move CI actions off the deprecated Node 20 runtime
+
+`actions/checkout@v4` and `actions/setup-node@v4` annotate every job.
+`setup-node@v5` resolves `package.json#packageManager` before `corepack enable`
+runs and fails to locate pnpm (observed on run 30496018726). Needs pnpm installed
+before `setup-node`, or its package-manager detection disabled.
+
+### MIR-TOOLING-0002 — Implement affected-set detection
+
+`cargo xtask test-affected` currently runs the full suite and says so. Real change
+detection needs a dependency graph over both workspaces and a diff base.
+
+### Generator gaps, each driven by the first contract that needs one
+
+- `$ref`, composition, and nested objects: expected to be needed by the project
+  schema (MIR-0107).
+- Protocol fixtures and validators from doc 805 section 3: expected to be needed by
+  MIR-0013 and MIR-0015, and by the compatibility corpus in MIR-0115.
+- Cargo pin syntax (`=x.y.z`) is unchecked by `cargo xtask policy` because no
+  external crate exists yet; add the check with the first one, which MIR-ADR-0001
+  will introduce.
 
 ## Workflow
 

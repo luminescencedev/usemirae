@@ -164,6 +164,8 @@ fn enforce_policy(root: &Path) -> Result<(), StepError> {
     let mut violations = Vec::new();
     let mut relative_paths = Vec::new();
 
+    let mut exemptions = Vec::new();
+
     for file in &files {
         let relative = file
             .strip_prefix(root)
@@ -176,13 +178,35 @@ fn enforce_policy(root: &Path) -> Result<(), StepError> {
             continue;
         };
 
-        // This crate's own matcher tables contain the patterns it looks for.
-        if relative == "tools/xtask/src/policy.rs" {
-            continue;
+        // A file may exempt itself from a rule, with a reason. Every exemption is
+        // listed in the report, so it stays a visible decision.
+        let mut allowed: Vec<String> = Vec::new();
+        for exemption in policy::declared_exemptions(&contents) {
+            if exemption.reason.is_empty() {
+                violations.push(policy::Violation {
+                    rule: "policy-exemption".to_owned(),
+                    location: relative.clone(),
+                    detail: format!(
+                        "exempts `{}` without a reason; write `policy-allow: {} - why`",
+                        exemption.rule, exemption.rule
+                    ),
+                });
+                continue;
+            }
+
+            allowed.push(exemption.rule.clone());
+            exemptions.push((relative.clone(), exemption));
         }
 
-        violations.extend(policy::scan_secrets(&relative, &contents));
-        violations.extend(policy::scan_local_paths(&relative, &contents));
+        let allows = |rule: &str| allowed.iter().any(|allowed| allowed == rule);
+
+        if !allows("secret") {
+            violations.extend(policy::scan_secrets(&relative, &contents));
+        }
+
+        if !allows("local-path") {
+            violations.extend(policy::scan_local_paths(&relative, &contents));
+        }
 
         if relative.ends_with("Cargo.toml") {
             violations.extend(policy::check_dependency_direction(&relative, &contents));
@@ -196,6 +220,13 @@ fn enforce_policy(root: &Path) -> Result<(), StepError> {
     violations.extend(policy::check_env_files(&relative_paths));
 
     println!("Scanned {} text files.", files.len());
+
+    if !exemptions.is_empty() {
+        println!("{} declared exemption(s):", exemptions.len());
+        for (path, exemption) in &exemptions {
+            println!("  {path} allows `{}`: {}", exemption.rule, exemption.reason);
+        }
+    }
 
     if violations.is_empty() {
         println!("No policy violations.");

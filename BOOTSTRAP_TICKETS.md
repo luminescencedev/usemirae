@@ -151,7 +151,49 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
     serialization derive exists yet, since serde would need the Rust dependency
     procedure in `DEPENDENCY_VERSIONS.md` section 11 (MIR-0012 needs it);
     protocol fixtures and validators from doc 805 section 3 are not generated
-- [ ] MIR-0007 — Create structured error foundation
+- [x] MIR-0007 — Create structured error foundation
+  - status: done
+  - branch: `main` (trunk-based; no pull request)
+  - crate: `crates/foundation/errors` (`mirae-errors`), `std` only, no dependency
+  - types: `ErrorCode` (validated `SCREAMING_SNAKE_CASE`, `const fn` so an invalid
+    literal fails to compile), `ErrorCategory` (the twelve layers from doc 605
+    section 2), `ErrorSeverity`, `Retryability`, `SubsystemId`, `UserActionHint`,
+    `CorrelationId` (u128, matching the IPC frame header in doc 108 section 4),
+    `ErrorContext`, and `MiraeError` in the shape doc 605 section 3 specifies
+  - behavior: category drives default severity and retryability, so classifying
+    once gives consistent recovery; `Retryability::Unknown` never allows an
+    automatic retry; cancellation is `Info` and reports `is_failure() == false`
+    (605 invariant 8); `root_cause` walks the source chain (invariant 6);
+    `Display` and `diagnostic_line` emit only the safe message and never the
+    source chain
+  - bounds: context is capped at 16 entries and counts what it dropped, text
+    values at 128 characters, safe messages at 240, truncation on character
+    boundaries so multi-byte text cannot be split
+  - redaction: absolute Windows and POSIX home paths are replaced before a message
+    or text value is stored. Scope is stated in the module: paths only, not a
+    general secret scanner, and it cannot make an unsafe message safe.
+  - validation: `cargo xtask check` (exit 0), `cargo test --package mirae-errors`
+    (42 unit tests plus 1 doctest), `cargo test --package xtask` (95 tests),
+    `cargo clippy --package mirae-errors --all-targets --all-features` — all
+    exit 0
+  - tooling change this ticket forced: `cargo xtask policy` flagged the redaction
+    module's own fixtures, since a module that removes paths must contain them.
+    Rather than hardcode more exempt files, the checker now honors a
+    `policy-allow: <rule> - <reason>` marker in a file header, requires the
+    reason, reports every exemption in use, and treats a marker without a reason
+    as a violation. Five exemptions exist, all listed on each run. Two parser
+    defects were caught by tests while building it: splitting on the first `-`
+    cut `local-path` in half, and markers inside test fixtures registered as real
+    exemptions, which is why markers only count in the first 40 lines.
+  - required tests from doc 605 section 12: code stability, secret redaction,
+    user-safe formatting, nested context, retry classification, cancellation
+    behavior, and aggregation are covered. Panic boundary belongs to MIR-0008 and
+    crash reporting; platform error translation, IPC error mapping, corrupted
+    project, and extension error isolation belong to the subsystems that will
+    produce those errors.
+  - follow-up: no concrete error codes are defined, since each subsystem owns its
+    own; a code registry with cross-subsystem uniqueness checks may be worth a
+    ticket once several subsystems declare codes
 - [ ] MIR-0008 — Create structured tracing foundation
 - [ ] MIR-0009 — Build engine process skeleton
 - [ ] MIR-0010 — Build native shell skeleton

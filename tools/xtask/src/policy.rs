@@ -9,6 +9,10 @@
 //! Every matcher is a pure function over text so its true and false positives are
 //! unit tested. Matching is hand-written: a regular-expression crate would have to
 //! clear the Rust dependency procedure in `DEPENDENCY_VERSIONS.md` section 11.
+//!
+//! policy-allow: secret - the matcher tables and their tests contain the very
+//! patterns this module searches for
+//! policy-allow: local-path - same reason, for the machine-local path markers
 
 use std::path::{Path, PathBuf};
 
@@ -74,6 +78,65 @@ pub(crate) fn collect_text_files(root: &Path) -> Vec<PathBuf> {
 
     files.sort();
     files
+}
+
+/// Marker that exempts a file from one rule.
+///
+/// Written as `policy-allow: <rule> - <reason>`. A reason is mandatory, so an
+/// exemption is a documented decision rather than a silent hole, and every use is
+/// reported by `cargo xtask policy`.
+const EXEMPTION_MARKER: &str = "policy-allow:";
+
+/// One declared exemption.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Exemption {
+    pub(crate) rule: String,
+    pub(crate) reason: String,
+}
+
+/// How far into a file an exemption marker is honored.
+///
+/// Exemptions belong in the file header, next to the documentation that justifies
+/// them. Restricting the window also stops a fixture or a test string further down
+/// from registering as a real exemption.
+const EXEMPTION_HEADER_LINES: usize = 40;
+
+/// Read the exemptions a file declares in its header.
+///
+/// A marker without a reason is returned with an empty reason and reported as a
+/// violation by the caller rather than honored, so "allow everything" cannot be
+/// written by accident.
+pub(crate) fn declared_exemptions(contents: &str) -> Vec<Exemption> {
+    let mut exemptions = Vec::new();
+
+    for line in contents.lines().take(EXEMPTION_HEADER_LINES) {
+        let Some(rest) = line.split_once(EXEMPTION_MARKER).map(|(_, rest)| rest) else {
+            continue;
+        };
+
+        let trimmed = rest.trim();
+
+        // The rule is one whole token: splitting on the first `-` would cut
+        // `local-path` in half.
+        let Some(rule) = trimmed.split_whitespace().next() else {
+            continue;
+        };
+
+        let after_rule = trimmed[rule.len()..].trim_start();
+        let reason = after_rule
+            .strip_prefix('-')
+            .or_else(|| after_rule.strip_prefix('\u{2014}'))
+            .unwrap_or_default()
+            .trim()
+            .to_owned();
+
+        exemptions.push(Exemption {
+            rule: rule.to_owned(),
+            reason,
+        });
+    }
+
+    exemptions
 }
 
 /// Placeholders that look like credentials but carry no secret.
@@ -455,6 +518,69 @@ pub(crate) fn check_env_files(paths: &[String]) -> Vec<Violation> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_a_declared_exemption_with_its_reason() {
+        let contents = "//! policy-allow: local-path - this module redacts paths and tests them\n";
+        let exemptions = declared_exemptions(contents);
+
+        assert_eq!(exemptions.len(), 1);
+        assert_eq!(exemptions[0].rule, "local-path");
+        assert_eq!(
+            exemptions[0].reason,
+            "this module redacts paths and tests them"
+        );
+    }
+
+    #[test]
+    fn reads_an_exemption_written_with_an_em_dash() {
+        let contents = "// policy-allow: secret \u{2014} fixture credentials for the scanner\n";
+        let exemptions = declared_exemptions(contents);
+
+        assert_eq!(exemptions.len(), 1);
+        assert_eq!(exemptions[0].rule, "secret");
+        assert!(exemptions[0].reason.starts_with("fixture credentials"));
+    }
+
+    #[test]
+    fn an_exemption_without_a_reason_is_reported_not_honored() {
+        let exemptions = declared_exemptions("// policy-allow: local-path\n");
+
+        assert_eq!(exemptions.len(), 1);
+        assert!(
+            exemptions[0].reason.is_empty(),
+            "an empty reason must stay visible to the caller"
+        );
+    }
+
+    #[test]
+    fn a_file_without_markers_declares_nothing() {
+        assert_eq!(declared_exemptions("fn main() {}\n"), Vec::new());
+    }
+
+    #[test]
+    fn keeps_a_hyphenated_rule_name_whole() {
+        // Regression: splitting on the first `-` turned `local-path` into `local`,
+        // so the exemption never matched the rule it named.
+        let exemptions = declared_exemptions("// policy-allow: local-path - fixtures\n");
+
+        assert_eq!(exemptions.len(), 1);
+        assert_eq!(exemptions[0].rule, "local-path");
+        assert_eq!(exemptions[0].reason, "fixtures");
+    }
+
+    #[test]
+    fn ignores_markers_below_the_header() {
+        // Regression: a marker inside a test fixture further down the file
+        // registered as a real exemption.
+        let mut contents = String::from("//! header\n");
+        for _ in 0..EXEMPTION_HEADER_LINES {
+            contents.push_str("// filler\n");
+        }
+        contents.push_str("// policy-allow: local-path - too late to count\n");
+
+        assert_eq!(declared_exemptions(&contents), Vec::new());
+    }
 
     #[test]
     fn flags_a_private_key_block() {

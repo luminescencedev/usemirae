@@ -45,6 +45,12 @@ uuid = { version = "=1.24.0", default-features = false, features = [
     "serde",
 ] }
 
+# Introduced by MIR-0109 for the project integrity hash. ADR-0071 fixed the
+# algorithm at SHA-256; this is the implementation. Default features are off so
+# no assembly backend is compiled in, and `std` is on because the persistence
+# path is not a no-std context.
+sha2 = { version = "=0.10.9", default-features = false, features = ["std"] }
+
 # Introduced by MIR-0016 for the desktop window and system webview decided in
 # ADR-0068. `wry` binds the operating system's own webview and `tao` owns the
 # window and the event loop; neither bundles a browser engine. Default features

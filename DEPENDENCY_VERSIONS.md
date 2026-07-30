@@ -307,6 +307,7 @@ Claude must not invent the future renderer, IPC, async-runtime, serialization, o
 | `tao` | `0.35.3` | MIR-0016 | The window and event loop for the desktop shell (ADR-0068). Features: `rwh_06` plus `x11` through `wry`; defaults off. |
 | `wry` | `0.55.1` | MIR-0016 | Bindings to the operating system's own webview — WebView2, WKWebView, WebKitGTK — for the control UI (ADR-0068). Features: `protocol`, `os-webview`, `x11`; defaults off. |
 | `uuid` | `1.24.0` | MIR-0101 | The persisted entity identifier (ADR-0069). Features: `std`, `v4`, `serde`; defaults off. |
+| `sha2` | `0.10.9` | MIR-0109 | The project-file integrity hash (ADR-0071, `401` section 11). Features: `std`; defaults off. |
 
 Transitive graph accepted with `serde` and `serde_json`, all pinned by
 `Cargo.lock`: `serde_derive 1.0.229`, `proc-macro2 1.0.107`, `quote 1.0.47`,
@@ -328,6 +329,27 @@ seeded once. Default features are off, so no clock, hashing, or formatting
 backend is compiled in. Parsing runs on untrusted input from a project file; it
 is bounded by construction, and `IdParseError` carries no part of the input, so a
 malformed identifier cannot travel into a log.
+
+Transitive graph accepted with `sha2`, all pinned by `Cargo.lock`:
+`digest 0.10.7`, `block-buffer 0.10.4`, `crypto-common 0.1.7`,
+`generic-array 0.14.7`, `typenum 1.20.1`, and `cpufeatures 0.2.17` on x86 and
+ARM. Every one is `MIT OR Apache-2.0`. None is new to the lockfile: they were
+already resolved through the `wry` graph, so this direct dependency adds nothing
+that was not being fetched anyway.
+
+Security review for `sha2`: the hash is used for corruption detection, not
+authenticity. `401` section 11 is explicit about that, and nothing in this
+project treats a matching hash as evidence of provenance — anyone who can edit a
+project file can recompute it. RustCrypto's implementation is the ecosystem
+standard and widely audited; the `asm` backend stays off, so the compiled code is
+portable Rust rather than per-architecture assembly. The input is a serialized
+document already bounded by the schema, so hashing allocates nothing the caller
+did not already hold.
+
+Hand-rolling SHA-256 was considered and rejected. It is roughly a hundred lines
+and the test vectors are public, but a bug in it would corrupt the integrity
+check silently — every file would verify against its own wrong hash — and that
+is a poor trade against a dependency the build already resolves.
 
 `wry` and `tao` bring a much larger graph, which ADR-0068 anticipated and which is
 reviewed below rather than enumerated crate by crate.

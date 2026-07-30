@@ -16,9 +16,9 @@ mirae-contracts = { path = "../../foundation/contracts" }
 mirae-domain = { path = "../../domain/domain" }
 mirae-state = { path = "../../domain/state" }
 mirae-types = { path = "../../foundation/types" }
-
-[dev-dependencies]
+# ADR-0071: canonical JSON, and the SHA-256 that covers it.
 serde_json = { workspace = true }
+sha2 = { workspace = true }
 
 [lints]
 workspace = true

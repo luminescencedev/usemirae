@@ -1233,6 +1233,7 @@ dependencies = [
  "mirae-state",
  "mirae-types",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]

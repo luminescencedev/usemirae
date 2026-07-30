@@ -7,25 +7,31 @@
 //!
 //! # What exists today
 //!
-//! Creating an empty project through a command and a transaction, and the
-//! explicit mapping from authoritative state onto the generated schema
-//! (`MIR-0107`, `MIR-0108`).
+//! Creating an empty project through a command and a transaction, the explicit
+//! mapping from authoritative state onto the generated schema, canonical
+//! serialization with an integrity hash, and atomic save
+//! (`MIR-0107`, `MIR-0108`, `MIR-0109`).
 //!
 //! # What does not
 //!
-//! Everything that touches a file: atomic save (`MIR-0109`), open and validation
-//! (`MIR-0110`), dirty tracking (`MIR-0111`), and the recovery store
-//! (`MIR-0112`). This crate reaches nothing platform-shaped yet, and when it
-//! does it will be through an interface this layer owns rather than through
-//! `std::fs` sprinkled across it (`804` section 4).
+//! Open and validation (`MIR-0110`), dirty tracking (`MIR-0111`), and the
+//! recovery store (`MIR-0112`). Filesystem access is confined to [`save`], so
+//! there is one place to look when the platform-specific parts of `403` section
+//! 4 need a real adapter.
 
+pub mod canonical;
 pub mod create;
 pub mod mapping;
+pub mod save;
 
+pub use canonical::{CanonicalError, LINE_ENDING, integrity_matches, serialize_with_integrity};
 pub use create::{
     CreateProject, CreatedProject, MAX_PROJECT_NAME_CHARACTERS, create_empty_project,
 };
 pub use mapping::{PROJECT_FORMAT, PROJECT_SCHEMA_VERSION, body_of, envelope_of};
+pub use save::{Durability, FileIdentity, FilesystemFailure, SaveError, SaveResult, save_project};
 
+#[cfg(test)]
+mod save_tests;
 #[cfg(test)]
 mod tests;

@@ -261,3 +261,4 @@
 - [ADR-0068: System Webview for the Desktop Shell](adr/ADR-0068-system-webview-desktop-shell.md)
 - [ADR-0069: Random UUIDs as the Persisted Entity Identifier](adr/ADR-0069-entity-identifier-representation.md)
 - [ADR-0070: Arc Snapshots With Per-Entity Sharing](adr/ADR-0070-state-representation-arc-snapshots.md)
+- [ADR-0071: JSON as the Canonical Project File Encoding](adr/ADR-0071-project-file-encoding.md)

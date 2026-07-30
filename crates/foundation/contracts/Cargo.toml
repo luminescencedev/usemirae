@@ -10,5 +10,9 @@ publish = false
 # Generated contracts carry serde derives (ADR-0067).
 serde = { workspace = true }
 
+[dev-dependencies]
+# The round-trip tests decode real project documents (ADR-0071).
+serde_json = { workspace = true }
+
 [lints]
 workspace = true

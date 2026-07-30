@@ -234,11 +234,265 @@ pub struct Welcome {
 /// Maximum accepted length of `engineSessionId`, for bounded decoding.
 pub const WELCOME_ENGINE_SESSION_ID_MAX_LENGTH: usize = 64;
 
+/// PersistedProjectBody.
+///
+/// The project's own content, separated from the envelope that describes the file. The split matters on open: the envelope is read and validated first, so a build can decide whether it may interpret the body at all (401 section 10).
+///
+/// Canonical schema: `mirae://project/v1/persisted-project-body`.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PersistedProjectBody {
+    /// Scenes, written in identifier order so the file is byte-stable across saves (401 section 12).
+    pub scenes: Vec<PersistedScene>,
+    /// Source definitions, written in identifier order.
+    pub sources: Vec<PersistedSourceDefinition>,
+    /// Scene items, written in identifier order. Bounded higher than scenes because a project has many more of them.
+    pub scene_items: Vec<PersistedSceneItem>,
+}
+
+/// Maximum accepted number of `scenes` entries, for bounded decoding.
+pub const PERSISTED_PROJECT_BODY_SCENES_MAX_ITEMS: usize = 4096;
+
+/// Maximum accepted number of `sources` entries, for bounded decoding.
+pub const PERSISTED_PROJECT_BODY_SOURCES_MAX_ITEMS: usize = 4096;
+
+/// Maximum accepted number of `sceneItems` entries, for bounded decoding.
+pub const PERSISTED_PROJECT_BODY_SCENE_ITEMS_MAX_ITEMS: usize = 65536;
+
+/// PersistedProjectEnvelope.
+///
+/// The whole project file: what it is, which schema it speaks, who wrote it, whether it is intact, and the project itself. The envelope exists so that an opening build can answer 'may I read this' before it tries to (401 sections 3 and 10).
+///
+/// Canonical schema: `mirae://project/v1/persisted-project-envelope`.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PersistedProjectEnvelope {
+    /// Identifies the file as a Mirae project. 401 invariant 1: a format identifies itself rather than relying on its extension.
+    ///
+    /// Bounded to 32 characters by the schema.
+    pub format: String,
+    /// The project schema major version. Explicit, because a file that does not say what it is cannot be migrated (401 invariant 2).
+    pub schema_version: u16,
+    /// Stable project identifier, as a canonical hyphenated UUID. Survives renames, moves, and copies (401 invariant 3).
+    ///
+    /// Bounded to 36 characters by the schema.
+    pub project_id: String,
+    /// When the project was created, as an RFC 3339 timestamp.
+    ///
+    /// Bounded to 64 characters by the schema.
+    pub created_at: String,
+    /// When this file was written, as an RFC 3339 timestamp.
+    ///
+    /// Bounded to 64 characters by the schema.
+    pub last_saved_at: String,
+    /// Which Mirae versions wrote this file and which one it needs.
+    pub app: ProjectAppVersions,
+    /// Features this project requires. An unsupported entry is refused or opened read-only, never ignored (401 invariant 7).
+    pub features: Vec<String>,
+    /// Corruption detection for this file.
+    pub integrity: ProjectIntegrity,
+    /// The project content itself.
+    pub project: PersistedProjectBody,
+}
+
+/// The only accepted value of `schemaVersion`.
+pub const PERSISTED_PROJECT_ENVELOPE_SCHEMA_VERSION: u16 = 1;
+
+/// Maximum accepted length of `projectId`, for bounded decoding.
+pub const PERSISTED_PROJECT_ENVELOPE_PROJECT_ID_MAX_LENGTH: usize = 36;
+
+/// Maximum accepted length of `createdAt`, for bounded decoding.
+pub const PERSISTED_PROJECT_ENVELOPE_CREATED_AT_MAX_LENGTH: usize = 64;
+
+/// Maximum accepted length of `lastSavedAt`, for bounded decoding.
+pub const PERSISTED_PROJECT_ENVELOPE_LAST_SAVED_AT_MAX_LENGTH: usize = 64;
+
+/// Maximum accepted number of `features` entries, for bounded decoding.
+pub const PERSISTED_PROJECT_ENVELOPE_FEATURES_MAX_ITEMS: usize = 256;
+
+/// PersistedScene.
+///
+/// A scene as it is stored: identity, name, and the ordered scene items it composes. A scene is not a rendered image (005 section 3.2), so nothing here describes pixels.
+///
+/// Canonical schema: `mirae://project/v1/persisted-scene`.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PersistedScene {
+    /// Stable scene identifier, as a canonical hyphenated UUID (ADR-0069).
+    ///
+    /// Bounded to 36 characters by the schema.
+    pub id: String,
+    /// Display name, bounded because it is user text read back from an untrusted file (005 section 8).
+    ///
+    /// Bounded to 256 characters by the schema.
+    pub name: String,
+    /// Scene item identifiers in composition order. The order is the z-order, which is why it is a sequence rather than a field on each item.
+    pub items: Vec<String>,
+}
+
+/// Maximum accepted length of `id`, for bounded decoding.
+pub const PERSISTED_SCENE_ID_MAX_LENGTH: usize = 36;
+
+/// Maximum accepted length of `name`, for bounded decoding.
+pub const PERSISTED_SCENE_NAME_MAX_LENGTH: usize = 256;
+
+/// Maximum accepted number of `items` entries, for bounded decoding.
+pub const PERSISTED_SCENE_ITEMS_MAX_ITEMS: usize = 4096;
+
+/// PersistedSceneItem.
+///
+/// The placement of a source inside a scene. Several items may reference one source definition, which is why the reference is an identifier rather than an embedded copy (005 section 3.4).
+///
+/// Canonical schema: `mirae://project/v1/persisted-scene-item`.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PersistedSceneItem {
+    /// Stable scene item identifier, as a canonical hyphenated UUID (ADR-0069).
+    ///
+    /// Bounded to 36 characters by the schema.
+    pub id: String,
+    /// The scene this item belongs to.
+    ///
+    /// Bounded to 36 characters by the schema.
+    pub scene_id: String,
+    /// The source definition this item places.
+    ///
+    /// Bounded to 36 characters by the schema.
+    pub source_id: String,
+    /// Whether this item participates in composition.
+    pub visible: bool,
+}
+
+/// Maximum accepted length of `id`, for bounded decoding.
+pub const PERSISTED_SCENE_ITEM_ID_MAX_LENGTH: usize = 36;
+
+/// Maximum accepted length of `sceneId`, for bounded decoding.
+pub const PERSISTED_SCENE_ITEM_SCENE_ID_MAX_LENGTH: usize = 36;
+
+/// Maximum accepted length of `sourceId`, for bounded decoding.
+pub const PERSISTED_SCENE_ITEM_SOURCE_ID_MAX_LENGTH: usize = 36;
+
+/// PersistedSourceDefinition.
+///
+/// A reusable source as it is stored. It holds configuration and never a live capture session, decoder, or socket: 005 section 3.3 keeps runtime objects out of anything that can be serialized, and credentials appear only as references.
+///
+/// Canonical schema: `mirae://project/v1/persisted-source-definition`.
+///
+/// See [`PersistedSourceDefinitionKind`].
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PersistedSourceDefinition {
+    /// Stable source identifier, as a canonical hyphenated UUID (ADR-0069).
+    ///
+    /// Bounded to 36 characters by the schema.
+    pub id: String,
+    /// Display name, bounded because it is user text read back from an untrusted file.
+    ///
+    /// Bounded to 256 characters by the schema.
+    pub name: String,
+    /// What kind of source this is. A closed set: an unknown kind is a compatibility diagnostic rather than a field the engine guesses at.
+    pub kind: PersistedSourceDefinitionKind,
+}
+
+/// What kind of source this is. A closed set: an unknown kind is a compatibility diagnostic rather than a field the engine guesses at.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum PersistedSourceDefinitionKind {
+    /// The `color` value of `kind`.
+    #[serde(rename = "color")]
+    Color,
+}
+
+impl PersistedSourceDefinitionKind {
+    /// The value as written on the wire.
+    #[must_use]
+    pub const fn as_wire_str(self) -> &'static str {
+        match self {
+            Self::Color => "color",
+        }
+    }
+}
+
+/// Maximum accepted length of `id`, for bounded decoding.
+pub const PERSISTED_SOURCE_DEFINITION_ID_MAX_LENGTH: usize = 36;
+
+/// Maximum accepted length of `name`, for bounded decoding.
+pub const PERSISTED_SOURCE_DEFINITION_NAME_MAX_LENGTH: usize = 256;
+
+/// ProjectAppVersions.
+///
+/// Which Mirae versions wrote a project and which one it needs. `minimumVersion` is what an opening build compares itself against before it decides whether it can honour the file's required features (401 section 3).
+///
+/// Canonical schema: `mirae://project/v1/project-app-versions`.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ProjectAppVersions {
+    /// The oldest Mirae version that can open this project without losing intent.
+    ///
+    /// Bounded to 32 characters by the schema.
+    pub minimum_version: String,
+    /// The Mirae version that last wrote this file, recorded for diagnostics rather than for compatibility decisions.
+    ///
+    /// Bounded to 32 characters by the schema.
+    pub saved_by_version: String,
+}
+
+/// Maximum accepted length of `minimumVersion`, for bounded decoding.
+pub const PROJECT_APP_VERSIONS_MINIMUM_VERSION_MAX_LENGTH: usize = 32;
+
+/// Maximum accepted length of `savedByVersion`, for bounded decoding.
+pub const PROJECT_APP_VERSIONS_SAVED_BY_VERSION_MAX_LENGTH: usize = 32;
+
+/// ProjectIntegrity.
+///
+/// Detects accidental corruption of a project file. Not authenticity: 401 section 11 is explicit that this is a checksum, not a signature, and a file that fails it is reported rather than trusted or silently repaired.
+///
+/// Canonical schema: `mirae://project/v1/project-integrity`.
+///
+/// See [`ProjectIntegrityAlgorithm`].
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ProjectIntegrity {
+    /// The hash algorithm. A closed set, so an unknown algorithm is a rejection rather than a field nobody validates.
+    pub algorithm: ProjectIntegrityAlgorithm,
+    /// Hash of the canonically serialized document with this field excluded, as lowercase hexadecimal (401 section 11).
+    ///
+    /// Bounded to 128 characters by the schema.
+    pub content_hash: String,
+}
+
+/// The hash algorithm. A closed set, so an unknown algorithm is a rejection rather than a field nobody validates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum ProjectIntegrityAlgorithm {
+    /// The `sha256` value of `algorithm`.
+    #[serde(rename = "sha256")]
+    Sha256,
+}
+
+impl ProjectIntegrityAlgorithm {
+    /// The value as written on the wire.
+    #[must_use]
+    pub const fn as_wire_str(self) -> &'static str {
+        match self {
+            Self::Sha256 => "sha256",
+        }
+    }
+}
+
+/// Maximum accepted length of `contentHash`, for bounded decoding.
+pub const PROJECT_INTEGRITY_CONTENT_HASH_MAX_LENGTH: usize = 128;
+
 /// Every contract id in this build, sorted.
-pub const CONTRACT_IDS: [&str; 5] = [
+pub const CONTRACT_IDS: [&str; 12] = [
     "mirae://ipc/v1/engine-readiness",
     "mirae://ipc/v1/hello",
     "mirae://ipc/v1/protocol-version",
     "mirae://ipc/v1/reject",
     "mirae://ipc/v1/welcome",
+    "mirae://project/v1/persisted-project-body",
+    "mirae://project/v1/persisted-project-envelope",
+    "mirae://project/v1/persisted-scene",
+    "mirae://project/v1/persisted-scene-item",
+    "mirae://project/v1/persisted-source-definition",
+    "mirae://project/v1/project-app-versions",
+    "mirae://project/v1/project-integrity",
 ];

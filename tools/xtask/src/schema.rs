@@ -13,8 +13,15 @@
 //! Deliberately narrow, so a schema cannot express something the generators would
 //! silently drop: a top-level `object` with `properties` of type `string`
 //! (optionally `enum` or `maxLength`), `integer` (optionally `const`, `minimum`,
-//! `maximum`), or `boolean`, plus `required`. Anything else is rejected with the
-//! property named. `$ref`, composition, and nested objects are not supported yet.
+//! `maximum`), `boolean`, `array` (with `items` and a required `maxItems`), or a
+//! `$ref` to another contract in the same domain and version, plus `required`.
+//! Anything else is rejected with the property named. Composition (`allOf`,
+//! `oneOf`, `anyOf`) and inline nested objects are still unsupported: a nested
+//! shape is a contract of its own, referenced by `$ref`, so it has an `$id`, a
+//! description, and a generated type like everything else.
+//!
+//! `MIR-0107` added `$ref` and `array` because the project schema needs both: a
+//! project holds collections of entities, and an envelope holds sub-objects.
 //!
 //! Parsing and rendering are pure so determinism and every rejection are unit
 //! tested; `discover` owns the file system.
@@ -53,6 +60,22 @@ pub(crate) enum FieldKind {
     Enumeration { variants: Vec<String> },
     /// A boolean flag.
     Flag,
+    /// Another contract, nested by `$ref`.
+    ///
+    /// Carries the referenced `$id` rather than a resolved type, because parsing
+    /// is per file: a reference is checked against every discovered contract
+    /// once they all exist.
+    Reference { contract_id: String },
+    /// A homogeneous list.
+    ///
+    /// `max_items` is required rather than optional. A list read from an
+    /// untrusted project file is an allocation the file controls, and `805`
+    /// invariant 9 puts bounds in the schema so both generators emit the same
+    /// one.
+    List {
+        item: Box<FieldKind>,
+        max_items: u64,
+    },
 }
 
 /// One property of a contract.
@@ -130,8 +153,34 @@ fn parse_field(
         ));
     }
 
+    // A `$ref` names a whole contract, so it replaces `type` rather than
+    // decorating it. Anything else alongside it would be a second definition of
+    // the same field, and the generators would have to choose one.
+    if let Some(reference) = definition.get("$ref") {
+        let Some(target) = reference.as_str() else {
+            return Err(error("`$ref` must be a string".to_owned()));
+        };
+
+        if definition.get("type").is_some() {
+            return Err(error(
+                "`$ref` and `type` cannot both be given; a reference names the whole shape"
+                    .to_owned(),
+            ));
+        }
+
+        return Ok(Field {
+            json_name: name.to_owned(),
+            doc,
+            kind: FieldKind::Reference {
+                contract_id: target.to_owned(),
+            },
+            required,
+            constant: None,
+        });
+    }
+
     let Some(type_name) = definition.get("type").and_then(Value::as_str) else {
-        return Err(error("needs a string `type`".to_owned()));
+        return Err(error("needs a string `type` or a `$ref`".to_owned()));
     };
 
     let kind = match type_name {
@@ -174,9 +223,42 @@ fn parse_field(
             }
         },
         "boolean" => FieldKind::Flag,
+        "array" => {
+            let Some(items) = definition.get("items") else {
+                return Err(error("an array needs `items`".to_owned()));
+            };
+
+            let Some(max_items) = definition.get("maxItems").and_then(integer_literal) else {
+                return Err(error(
+                    "an array needs `maxItems`; a list read from a file is an allocation the                      file controls (805 invariant 9)"
+                        .to_owned(),
+                ));
+            };
+
+            // The element is parsed as a field so it inherits every rule: a
+            // string element still needs its `maxLength`, and a referenced
+            // element is still checked against the contracts that exist.
+            let element = parse_field(path, &format!("{name}[]"), items, true)?;
+
+            if element.constant.is_some() {
+                return Err(error("an array element cannot declare `const`".to_owned()));
+            }
+
+            if matches!(element.kind, FieldKind::List { .. }) {
+                return Err(error(
+                    "an array of arrays is not supported; name the inner shape as a contract"
+                        .to_owned(),
+                ));
+            }
+
+            FieldKind::List {
+                item: Box::new(element.kind),
+                max_items,
+            }
+        }
         other => {
             return Err(error(format!(
-                "type `{other}` is not supported; use integer, string, or boolean"
+                "type `{other}` is not supported; use integer, string, boolean, or array"
             )));
         }
     };
@@ -296,6 +378,110 @@ pub(crate) fn parse_schema(
         type_name: pascal_case(last_segment),
         fields,
     })
+}
+
+/// Every contract id a field can reach directly.
+fn referenced_ids(kind: &FieldKind, into: &mut Vec<String>) {
+    match kind {
+        FieldKind::Reference { contract_id } => into.push(contract_id.clone()),
+        FieldKind::List { item, .. } => referenced_ids(item, into),
+        _ => {}
+    }
+}
+
+/// Reject references that name nothing, cross a version, or form a cycle.
+///
+/// Runs after discovery because a reference is checked against the contracts
+/// that exist, not against the file it appears in.
+pub(crate) fn find_reference_errors(contracts: &[Contract]) -> Vec<SchemaError> {
+    let mut errors = Vec::new();
+
+    for contract in contracts {
+        for field in &contract.fields {
+            let mut targets = Vec::new();
+            referenced_ids(&field.kind, &mut targets);
+
+            for target in targets {
+                let Some(referenced) = contracts.iter().find(|candidate| candidate.id == target)
+                else {
+                    errors.push(SchemaError {
+                        path: contract.path.clone(),
+                        detail: format!(
+                            "property `{}` references `{target}`, which no schema defines",
+                            field.json_name
+                        ),
+                    });
+                    continue;
+                };
+
+                // A contract may not reach across a version boundary: the two
+                // sides evolve on different schedules, and a v1 document quietly
+                // embedding a v2 shape is a migration nobody wrote.
+                if referenced.domain != contract.domain || referenced.version != contract.version {
+                    errors.push(SchemaError {
+                        path: contract.path.clone(),
+                        detail: format!(
+                            "property `{}` references `{target}`, which is in                              `{}/{}` rather than `{}/{}`",
+                            field.json_name,
+                            referenced.domain,
+                            referenced.version,
+                            contract.domain,
+                            contract.version
+                        ),
+                    });
+                }
+            }
+        }
+    }
+
+    errors.extend(find_reference_cycles(contracts));
+    errors
+}
+
+/// Reject a reference cycle.
+///
+/// A cycle would generate a Rust struct containing itself, which has no size.
+/// Rejecting every cycle rather than only the direct ones is deliberate: a cycle
+/// broken by a list would compile, but a project schema does not need one, and
+/// the day it does deserves an explicit decision rather than a surprise.
+fn find_reference_cycles(contracts: &[Contract]) -> Vec<SchemaError> {
+    let mut errors = Vec::new();
+
+    for start in contracts {
+        let mut seen = vec![start.id.clone()];
+        let mut frontier = vec![start.id.clone()];
+
+        while let Some(current) = frontier.pop() {
+            let Some(contract) = contracts.iter().find(|candidate| candidate.id == current) else {
+                continue;
+            };
+
+            for field in &contract.fields {
+                let mut targets = Vec::new();
+                referenced_ids(&field.kind, &mut targets);
+
+                for target in targets {
+                    if target == start.id {
+                        errors.push(SchemaError {
+                            path: start.path.clone(),
+                            detail: format!(
+                                "`{}` is reachable from itself through `{current}`; a reference                                  cycle has no representation",
+                                start.id
+                            ),
+                        });
+                        return errors;
+                    }
+
+                    if !seen.contains(&target) {
+                        seen.push(target.clone());
+                        frontier.push(target);
+                    }
+                }
+            }
+        }
+    }
+
+    errors
 }
 
 /// Reject two schemas that claim the same `$id` (`805` invariant 8).
@@ -423,16 +609,43 @@ pub(crate) fn render_manifest(contracts: &[Contract]) -> String {
     out
 }
 
-/// The Rust type for a field, and the enum it may need.
-fn rust_type(contract: &Contract, field: &Field) -> String {
-    let base = match &field.kind {
+/// The type name a contract id generates, for a reference.
+///
+/// Falls back to the last id segment. `find_reference_errors` has already
+/// rejected an unresolved reference, so this only runs for ids that exist; the
+/// fallback keeps rendering total rather than panicking on an impossible case.
+fn referenced_type_name(contracts: &[&Contract], contract_id: &str) -> String {
+    contracts
+        .iter()
+        .find(|candidate| candidate.id == contract_id)
+        .map(|candidate| candidate.type_name.clone())
+        .unwrap_or_else(|| pascal_case(contract_id.rsplit('/').next().unwrap_or(contract_id)))
+}
+
+/// The Rust type for a field kind.
+fn rust_kind(
+    contracts: &[&Contract],
+    contract: &Contract,
+    field: &Field,
+    kind: &FieldKind,
+) -> String {
+    match kind {
         FieldKind::Integer { bits } => format!("u{bits}"),
         FieldKind::Text { .. } => "String".to_owned(),
         FieldKind::Flag => "bool".to_owned(),
         FieldKind::Enumeration { .. } => {
             format!("{}{}", contract.type_name, pascal_case(&field.json_name))
         }
-    };
+        FieldKind::Reference { contract_id } => referenced_type_name(contracts, contract_id),
+        FieldKind::List { item, .. } => {
+            format!("Vec<{}>", rust_kind(contracts, contract, field, item))
+        }
+    }
+}
+
+/// The Rust type for a field, and the enum it may need.
+fn rust_type(contracts: &[&Contract], contract: &Contract, field: &Field) -> String {
+    let base = rust_kind(contracts, contract, field, &field.kind);
 
     if field.required {
         base
@@ -497,7 +710,7 @@ pub(crate) fn render_rust(contracts: &[Contract]) -> String {
             out.push_str(&format!(
                 "    pub {}: {},\n",
                 snake_case(&field.json_name),
-                rust_type(contract, field)
+                rust_type(&contracts, contract, field)
             ));
         }
         out.push_str("}\n");
@@ -564,6 +777,16 @@ pub(crate) fn render_rust(contracts: &[Contract]) -> String {
                 ));
                 out.push_str(&format!("pub const {prefix}_MAX_LENGTH: usize = {max};\n"));
             }
+
+            if let FieldKind::List { max_items, .. } = &field.kind {
+                out.push_str(&format!(
+                    "\n/// Maximum accepted number of `{}` entries, for bounded decoding.\n",
+                    field.json_name
+                ));
+                out.push_str(&format!(
+                    "pub const {prefix}_MAX_ITEMS: usize = {max_items};\n"
+                ));
+            }
         }
     }
 
@@ -580,16 +803,33 @@ pub(crate) fn render_rust(contracts: &[Contract]) -> String {
     out
 }
 
-/// The TypeScript type for a field.
-fn typescript_type(contract: &Contract, field: &Field) -> String {
-    match &field.kind {
+/// The TypeScript type for a field kind.
+fn typescript_kind(
+    contracts: &[&Contract],
+    contract: &Contract,
+    field: &Field,
+    kind: &FieldKind,
+) -> String {
+    match kind {
         FieldKind::Integer { .. } => "number".to_owned(),
         FieldKind::Text { .. } => "string".to_owned(),
         FieldKind::Flag => "boolean".to_owned(),
         FieldKind::Enumeration { .. } => {
             format!("{}{}", contract.type_name, pascal_case(&field.json_name))
         }
+        FieldKind::Reference { contract_id } => referenced_type_name(contracts, contract_id),
+        FieldKind::List { item, .. } => {
+            format!(
+                "readonly {}[]",
+                typescript_kind(contracts, contract, field, item)
+            )
+        }
     }
+}
+
+/// The TypeScript type for a field.
+fn typescript_type(contracts: &[&Contract], contract: &Contract, field: &Field) -> String {
+    typescript_kind(contracts, contract, field, &field.kind)
 }
 
 /// Render the generated TypeScript bindings.
@@ -634,7 +874,7 @@ pub(crate) fn render_typescript(contracts: &[Contract]) -> String {
                 "  readonly {}{}: {};\n",
                 field.json_name,
                 optional,
-                typescript_type(contract, field)
+                typescript_type(&contracts, contract, field)
             ));
         }
         out.push_str("}\n");
@@ -665,6 +905,14 @@ pub(crate) fn render_typescript(contracts: &[Contract]) -> String {
                     field.json_name
                 ));
                 out.push_str(&format!("export const {prefix}_MAX_LENGTH = {max};\n"));
+            }
+
+            if let FieldKind::List { max_items, .. } = &field.kind {
+                out.push_str(&format!(
+                    "\n/** Maximum accepted number of `{}` entries, for bounded decoding. */\n",
+                    field.json_name
+                ));
+                out.push_str(&format!("export const {prefix}_MAX_ITEMS = {max_items};\n"));
             }
         }
     }
@@ -784,6 +1032,7 @@ pub(crate) fn discover(root: &Path) -> (Vec<Contract>, Vec<SchemaError>) {
 
     errors.extend(find_duplicate_ids(&contracts));
     errors.extend(find_duplicate_type_names(&contracts));
+    errors.extend(find_reference_errors(&contracts));
 
     (contracts, errors)
 }
@@ -896,7 +1145,7 @@ mod tests {
 
     #[test]
     fn rejects_schemas_that_would_generate_undocumented_or_unbounded_code() {
-        let cases: [(&str, &str); 7] = [
+        let cases: [(&str, &str); 8] = [
             (
                 r#"{"$id":"mirae://ipc/v1/a","title":"A","description":"d","type":"object","properties":{"x":{"type":"integer","maximum":10}},"additionalProperties":false}"#,
                 "description",
@@ -909,8 +1158,14 @@ mod tests {
                 r#"{"$id":"mirae://ipc/v1/a","title":"A","description":"d","type":"object","properties":{"x":{"type":"string","description":"d"}},"additionalProperties":false}"#,
                 "maxLength",
             ),
+            // `array` became supported in MIR-0107, so the rejection moved from
+            // the type to what an array still owes: its element and its bound.
             (
                 r#"{"$id":"mirae://ipc/v1/a","title":"A","description":"d","type":"object","properties":{"x":{"type":"array","description":"d"}},"additionalProperties":false}"#,
+                "items",
+            ),
+            (
+                r#"{"$id":"mirae://ipc/v1/a","title":"A","description":"d","type":"object","properties":{"x":{"type":"number","description":"d"}},"additionalProperties":false}"#,
                 "not supported",
             ),
             (
@@ -1077,5 +1332,269 @@ mod tests {
             contracts.len() >= 2,
             "the IPC handshake contracts should be discovered"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // MIR-0107 widened the subset with `$ref` and `array`, because the project
+    // schema needs both. These cover what the widening can get wrong: an
+    // unbounded list, a reference to nothing, a reference across a version, and
+    // a cycle that would generate a type containing itself.
+    // -----------------------------------------------------------------------
+
+    /// A schema referring to `mirae://project/v1/leaf` and holding lists.
+    const BRANCH_SCHEMA: &str = r#"{
+        "$id": "mirae://project/v1/branch",
+        "title": "Branch",
+        "description": "A contract with a reference and a list.",
+        "type": "object",
+        "properties": {
+            "leaf": { "$ref": "mirae://project/v1/leaf", "description": "The referenced shape." },
+            "names": {
+                "type": "array",
+                "maxItems": 8,
+                "items": { "type": "string", "maxLength": 16, "description": "One name." },
+                "description": "A bounded list of names."
+            },
+            "leaves": {
+                "type": "array",
+                "maxItems": 4,
+                "items": { "$ref": "mirae://project/v1/leaf", "description": "One leaf." },
+                "description": "A bounded list of referenced shapes."
+            }
+        },
+        "required": ["leaf", "names", "leaves"],
+        "additionalProperties": false
+    }"#;
+
+    const LEAF_SCHEMA: &str = r#"{
+        "$id": "mirae://project/v1/leaf",
+        "title": "Leaf",
+        "description": "A contract with nothing but a flag.",
+        "type": "object",
+        "properties": {
+            "enabled": { "type": "boolean", "description": "Whether it is on." }
+        },
+        "required": ["enabled"],
+        "additionalProperties": false
+    }"#;
+
+    fn parse_project(contents: &str) -> Result<Contract, SchemaError> {
+        parse_schema(
+            "project",
+            "v1",
+            "schemas/project/v1/probe.schema.json",
+            contents,
+        )
+    }
+
+    #[test]
+    fn parses_a_reference_and_a_bounded_list() {
+        let contract = parse_project(BRANCH_SCHEMA).ok();
+        let fields = contract.map(|contract| contract.fields).unwrap_or_default();
+
+        assert_eq!(fields.len(), 3);
+        assert_eq!(
+            fields[0].kind,
+            FieldKind::Reference {
+                contract_id: "mirae://project/v1/leaf".to_owned()
+            }
+        );
+        assert_eq!(
+            fields[1].kind,
+            FieldKind::List {
+                item: Box::new(FieldKind::Text {
+                    max_length: Some(16)
+                }),
+                max_items: 8,
+            }
+        );
+        assert_eq!(
+            fields[2].kind,
+            FieldKind::List {
+                item: Box::new(FieldKind::Reference {
+                    contract_id: "mirae://project/v1/leaf".to_owned()
+                }),
+                max_items: 4,
+            }
+        );
+    }
+
+    #[test]
+    fn rejects_a_list_without_a_bound() {
+        // 805 invariant 9: a list read from a file is an allocation the file
+        // controls, so the bound belongs in the schema where both generators
+        // see it.
+        let unbounded = r#"{
+            "$id": "mirae://project/v1/probe",
+            "title": "Probe",
+            "description": "A list with no maximum.",
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": { "type": "string", "maxLength": 8, "description": "One." },
+                    "description": "Unbounded."
+                }
+            },
+            "required": ["items"],
+            "additionalProperties": false
+        }"#;
+
+        let error = parse_project(unbounded).err();
+
+        assert!(
+            error.is_some_and(|error| error.detail.contains("maxItems")),
+            "the rejection should name the missing bound"
+        );
+    }
+
+    #[test]
+    fn rejects_an_element_that_breaks_the_element_rules() {
+        // The element is parsed as a field, so a string element still owes its
+        // `maxLength`. Without that, a list of unbounded strings would slip
+        // through a bounded list.
+        let unbounded_element = r#"{
+            "$id": "mirae://project/v1/probe",
+            "title": "Probe",
+            "description": "A bounded list of unbounded strings.",
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "maxItems": 4,
+                    "items": { "type": "string", "description": "One." },
+                    "description": "Bounded list."
+                }
+            },
+            "required": ["items"],
+            "additionalProperties": false
+        }"#;
+
+        assert!(parse_project(unbounded_element).is_err());
+    }
+
+    #[test]
+    fn rejects_a_reference_beside_a_type() {
+        let both = r#"{
+            "$id": "mirae://project/v1/probe",
+            "title": "Probe",
+            "description": "A field that is two things.",
+            "type": "object",
+            "properties": {
+                "leaf": {
+                    "$ref": "mirae://project/v1/leaf",
+                    "type": "string",
+                    "maxLength": 4,
+                    "description": "Both."
+                }
+            },
+            "required": ["leaf"],
+            "additionalProperties": false
+        }"#;
+
+        assert!(parse_project(both).is_err());
+    }
+
+    #[test]
+    fn rejects_a_reference_to_a_contract_that_does_not_exist() {
+        let Ok(branch) = parse_project(BRANCH_SCHEMA) else {
+            return;
+        };
+
+        let errors = find_reference_errors(&[branch]);
+
+        assert_eq!(
+            errors.len(),
+            2,
+            "one per referencing property, including the list"
+        );
+        assert!(errors.iter().all(|error| error.detail.contains("leaf")));
+    }
+
+    #[test]
+    fn accepts_a_reference_that_resolves() {
+        let (Ok(branch), Ok(leaf)) = (parse_project(BRANCH_SCHEMA), parse_project(LEAF_SCHEMA))
+        else {
+            return;
+        };
+
+        assert!(find_reference_errors(&[branch, leaf]).is_empty());
+    }
+
+    #[test]
+    fn rejects_a_reference_that_crosses_a_version() {
+        let Ok(branch) = parse_project(BRANCH_SCHEMA) else {
+            return;
+        };
+        let Ok(mut leaf) = parse_project(LEAF_SCHEMA) else {
+            return;
+        };
+        leaf.version = "v2".to_owned();
+
+        let errors = find_reference_errors(&[branch, leaf]);
+
+        assert!(
+            errors.iter().any(|error| error.detail.contains("v2")),
+            "a v1 document embedding a v2 shape is a migration nobody wrote"
+        );
+    }
+
+    #[test]
+    fn rejects_a_reference_cycle() {
+        // A cycle would generate a Rust struct containing itself, which has no
+        // size.
+        let first_schema = r#"{
+            "$id": "mirae://project/v1/first",
+            "title": "First",
+            "description": "Points at the second.",
+            "type": "object",
+            "properties": {
+                "next": { "$ref": "mirae://project/v1/second", "description": "The second." }
+            },
+            "required": ["next"],
+            "additionalProperties": false
+        }"#;
+        let second_schema = r#"{
+            "$id": "mirae://project/v1/second",
+            "title": "Second",
+            "description": "Points back at the first.",
+            "type": "object",
+            "properties": {
+                "back": { "$ref": "mirae://project/v1/first", "description": "The first." }
+            },
+            "required": ["back"],
+            "additionalProperties": false
+        }"#;
+
+        let (Ok(first), Ok(second)) = (parse_project(first_schema), parse_project(second_schema))
+        else {
+            return;
+        };
+
+        let errors = find_reference_errors(&[first, second]);
+
+        assert!(errors.iter().any(|error| error.detail.contains("cycle")));
+    }
+
+    #[test]
+    fn renders_references_and_lists_in_both_languages() {
+        let (Ok(branch), Ok(leaf)) = (parse_project(BRANCH_SCHEMA), parse_project(LEAF_SCHEMA))
+        else {
+            return;
+        };
+        let contracts = vec![branch, leaf];
+
+        let rust = render_rust(&contracts);
+        let typescript = render_typescript(&contracts);
+
+        assert!(rust.contains("pub leaf: Leaf,"));
+        assert!(rust.contains("pub names: Vec<String>,"));
+        assert!(rust.contains("pub leaves: Vec<Leaf>,"));
+        assert!(rust.contains("pub const BRANCH_NAMES_MAX_ITEMS: usize = 8;"));
+
+        assert!(typescript.contains("readonly leaf: Leaf;"));
+        assert!(typescript.contains("readonly names: readonly string[];"));
+        assert!(typescript.contains("readonly leaves: readonly Leaf[];"));
+        assert!(typescript.contains("export const BRANCH_LEAVES_MAX_ITEMS = 4;"));
     }
 }

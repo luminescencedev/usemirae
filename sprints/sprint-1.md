@@ -14,7 +14,7 @@ quietly inside a feature ticket is the failure this list prevents.
 
 - [x] ADR-0069 — Random UUIDs as the persisted entity identifier — gated MIR-0101
 - [x] ADR-0070 — Arc snapshots with per-entity sharing — gated MIR-0102
-- [ ] Project file encoding — gates MIR-0107
+- [x] ADR-0071 — JSON as the canonical project file encoding — gated MIR-0107
 
 ## Strand 1 — Kernel
 
@@ -33,7 +33,7 @@ snapshot/patch protocol a client mirrors. Testable without a window or a file.
 The schema, creation, atomic save, open and validation, dirty tracking, and a
 bounded recovery store.
 
-- [ ] MIR-0107 — Define project schema v1
+- [x] MIR-0107 — Define project schema v1
 - [ ] MIR-0108 — Implement empty-project creation
 - [ ] MIR-0109 — Implement atomic project save
 - [ ] MIR-0110 — Implement project open and validation

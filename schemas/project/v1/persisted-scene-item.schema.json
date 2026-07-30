@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mirae://project/v1/persisted-scene-item",
+  "title": "PersistedSceneItem",
+  "description": "The placement of a source inside a scene. Several items may reference one source definition, which is why the reference is an identifier rather than an embedded copy (005 section 3.4).",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "maxLength": 36,
+      "description": "Stable scene item identifier, as a canonical hyphenated UUID (ADR-0069)."
+    },
+    "sceneId": {
+      "type": "string",
+      "maxLength": 36,
+      "description": "The scene this item belongs to."
+    },
+    "sourceId": {
+      "type": "string",
+      "maxLength": 36,
+      "description": "The source definition this item places."
+    },
+    "visible": {
+      "type": "boolean",
+      "description": "Whether this item participates in composition."
+    }
+  },
+  "required": ["id", "sceneId", "sourceId", "visible"],
+  "additionalProperties": false
+}

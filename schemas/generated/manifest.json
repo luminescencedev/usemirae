@@ -56,6 +56,69 @@
       "typeName": "Welcome",
       "fields": 4,
       "path": "schemas/ipc/v1/welcome.schema.json"
+    },
+    {
+      "id": "mirae://project/v1/persisted-project-body",
+      "title": "PersistedProjectBody",
+      "domain": "project",
+      "version": "v1",
+      "typeName": "PersistedProjectBody",
+      "fields": 3,
+      "path": "schemas/project/v1/persisted-project-body.schema.json"
+    },
+    {
+      "id": "mirae://project/v1/persisted-project-envelope",
+      "title": "PersistedProjectEnvelope",
+      "domain": "project",
+      "version": "v1",
+      "typeName": "PersistedProjectEnvelope",
+      "fields": 9,
+      "path": "schemas/project/v1/persisted-project-envelope.schema.json"
+    },
+    {
+      "id": "mirae://project/v1/persisted-scene",
+      "title": "PersistedScene",
+      "domain": "project",
+      "version": "v1",
+      "typeName": "PersistedScene",
+      "fields": 3,
+      "path": "schemas/project/v1/persisted-scene.schema.json"
+    },
+    {
+      "id": "mirae://project/v1/persisted-scene-item",
+      "title": "PersistedSceneItem",
+      "domain": "project",
+      "version": "v1",
+      "typeName": "PersistedSceneItem",
+      "fields": 4,
+      "path": "schemas/project/v1/persisted-scene-item.schema.json"
+    },
+    {
+      "id": "mirae://project/v1/persisted-source-definition",
+      "title": "PersistedSourceDefinition",
+      "domain": "project",
+      "version": "v1",
+      "typeName": "PersistedSourceDefinition",
+      "fields": 3,
+      "path": "schemas/project/v1/persisted-source-definition.schema.json"
+    },
+    {
+      "id": "mirae://project/v1/project-app-versions",
+      "title": "ProjectAppVersions",
+      "domain": "project",
+      "version": "v1",
+      "typeName": "ProjectAppVersions",
+      "fields": 2,
+      "path": "schemas/project/v1/project-app-versions.schema.json"
+    },
+    {
+      "id": "mirae://project/v1/project-integrity",
+      "title": "ProjectIntegrity",
+      "domain": "project",
+      "version": "v1",
+      "typeName": "ProjectIntegrity",
+      "fields": 2,
+      "path": "schemas/project/v1/project-integrity.schema.json"
     }
   ]
 }

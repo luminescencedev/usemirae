@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mirae://project/v1/project-integrity",
+  "title": "ProjectIntegrity",
+  "description": "Detects accidental corruption of a project file. Not authenticity: 401 section 11 is explicit that this is a checksum, not a signature, and a file that fails it is reported rather than trusted or silently repaired.",
+  "type": "object",
+  "properties": {
+    "algorithm": {
+      "type": "string",
+      "enum": ["sha256"],
+      "description": "The hash algorithm. A closed set, so an unknown algorithm is a rejection rather than a field nobody validates."
+    },
+    "contentHash": {
+      "type": "string",
+      "maxLength": 128,
+      "description": "Hash of the canonically serialized document with this field excluded, as lowercase hexadecimal (401 section 11)."
+    }
+  },
+  "required": ["algorithm", "contentHash"],
+  "additionalProperties": false
+}

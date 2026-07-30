@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mirae://project/v1/persisted-scene",
+  "title": "PersistedScene",
+  "description": "A scene as it is stored: identity, name, and the ordered scene items it composes. A scene is not a rendered image (005 section 3.2), so nothing here describes pixels.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "maxLength": 36,
+      "description": "Stable scene identifier, as a canonical hyphenated UUID (ADR-0069)."
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 256,
+      "description": "Display name, bounded because it is user text read back from an untrusted file (005 section 8)."
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "type": "string",
+        "maxLength": 36,
+        "description": "A scene item identifier."
+      },
+      "description": "Scene item identifiers in composition order. The order is the z-order, which is why it is a sequence rather than a field on each item."
+    }
+  },
+  "required": ["id", "name", "items"],
+  "additionalProperties": false
+}

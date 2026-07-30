@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mirae://project/v1/persisted-project-envelope",
+  "title": "PersistedProjectEnvelope",
+  "description": "The whole project file: what it is, which schema it speaks, who wrote it, whether it is intact, and the project itself. The envelope exists so that an opening build can answer 'may I read this' before it tries to (401 sections 3 and 10).",
+  "type": "object",
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "mirae-project",
+      "maxLength": 32,
+      "description": "Identifies the file as a Mirae project. 401 invariant 1: a format identifies itself rather than relying on its extension."
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535,
+      "const": 1,
+      "description": "The project schema major version. Explicit, because a file that does not say what it is cannot be migrated (401 invariant 2)."
+    },
+    "projectId": {
+      "type": "string",
+      "maxLength": 36,
+      "description": "Stable project identifier, as a canonical hyphenated UUID. Survives renames, moves, and copies (401 invariant 3)."
+    },
+    "createdAt": {
+      "type": "string",
+      "maxLength": 64,
+      "description": "When the project was created, as an RFC 3339 timestamp."
+    },
+    "lastSavedAt": {
+      "type": "string",
+      "maxLength": 64,
+      "description": "When this file was written, as an RFC 3339 timestamp."
+    },
+    "app": {
+      "$ref": "mirae://project/v1/project-app-versions",
+      "description": "Which Mirae versions wrote this file and which one it needs."
+    },
+    "features": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "string",
+        "maxLength": 64,
+        "description": "One declared feature name."
+      },
+      "description": "Features this project requires. An unsupported entry is refused or opened read-only, never ignored (401 invariant 7)."
+    },
+    "integrity": {
+      "$ref": "mirae://project/v1/project-integrity",
+      "description": "Corruption detection for this file."
+    },
+    "project": {
+      "$ref": "mirae://project/v1/persisted-project-body",
+      "description": "The project content itself."
+    }
+  },
+  "required": [
+    "format",
+    "schemaVersion",
+    "projectId",
+    "createdAt",
+    "lastSavedAt",
+    "app",
+    "features",
+    "integrity",
+    "project"
+  ],
+  "additionalProperties": false
+}

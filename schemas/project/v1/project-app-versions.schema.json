@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mirae://project/v1/project-app-versions",
+  "title": "ProjectAppVersions",
+  "description": "Which Mirae versions wrote a project and which one it needs. `minimumVersion` is what an opening build compares itself against before it decides whether it can honour the file's required features (401 section 3).",
+  "type": "object",
+  "properties": {
+    "minimumVersion": {
+      "type": "string",
+      "maxLength": 32,
+      "description": "The oldest Mirae version that can open this project without losing intent."
+    },
+    "savedByVersion": {
+      "type": "string",
+      "maxLength": 32,
+      "description": "The Mirae version that last wrote this file, recorded for diagnostics rather than for compatibility decisions."
+    }
+  },
+  "required": ["minimumVersion", "savedByVersion"],
+  "additionalProperties": false
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mirae://project/v1/persisted-source-definition",
+  "title": "PersistedSourceDefinition",
+  "description": "A reusable source as it is stored. It holds configuration and never a live capture session, decoder, or socket: 005 section 3.3 keeps runtime objects out of anything that can be serialized, and credentials appear only as references.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "maxLength": 36,
+      "description": "Stable source identifier, as a canonical hyphenated UUID (ADR-0069)."
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 256,
+      "description": "Display name, bounded because it is user text read back from an untrusted file."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["color"],
+      "description": "What kind of source this is. A closed set: an unknown kind is a compatibility diagnostic rather than a field the engine guesses at."
+    }
+  },
+  "required": ["id", "name", "kind"],
+  "additionalProperties": false
+}

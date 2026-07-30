@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mirae://project/v1/persisted-project-body",
+  "title": "PersistedProjectBody",
+  "description": "The project's own content, separated from the envelope that describes the file. The split matters on open: the envelope is read and validated first, so a build can decide whether it may interpret the body at all (401 section 10).",
+  "type": "object",
+  "properties": {
+    "scenes": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "$ref": "mirae://project/v1/persisted-scene",
+        "description": "One scene."
+      },
+      "description": "Scenes, written in identifier order so the file is byte-stable across saves (401 section 12)."
+    },
+    "sources": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "$ref": "mirae://project/v1/persisted-source-definition",
+        "description": "One source definition."
+      },
+      "description": "Source definitions, written in identifier order."
+    },
+    "sceneItems": {
+      "type": "array",
+      "maxItems": 65536,
+      "items": {
+        "$ref": "mirae://project/v1/persisted-scene-item",
+        "description": "One scene item."
+      },
+      "description": "Scene items, written in identifier order. Bounded higher than scenes because a project has many more of them."
+    }
+  },
+  "required": ["scenes", "sources", "sceneItems"],
+  "additionalProperties": false
+}

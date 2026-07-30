@@ -392,7 +392,24 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
   - follow-up: only the handshake is implemented, not the message families in doc
     108 section 7; the credential is still `LaunchCredential::placeholder`, so
     real entropy remains outstanding and is called out in the code.
-- [ ] MIR-0013 — Add engine crash/restart smoke test
+- [x] MIR-0013 — Add engine crash/restart smoke test
+  - status: done
+  - branch: `main` (trunk-based; no pull request)
+  - suite: `apps/engine/tests/crash_restart.rs`, four tests against the real
+    engine binary through `CARGO_BIN_EXE_mirae-engine`, so they run against what
+    the workspace just built rather than a fake.
+  - proves what a fake launcher cannot: a killed process is observed as gone, the
+    restart is a genuinely different process id (doc 102 invariant 8: a new engine
+    process creates a new session), the restart budget stops a crash loop and says
+    why, and the shell reports no engine state while disconnected (doc 501
+    section 6).
+  - validation: `cargo test --package mirae-engine --test crash_restart`
+    (4 passed), `cargo xtask check` (exit 0), no orphan processes left behind
+  - notes: the supervisor's unit tests already cover the decision logic with a
+    fake launcher. This suite exists for the parts that only a real process can
+    show, which is why it kills a child rather than simulating an exit.
+  - follow-up: restart after a handshake failure, and restart while an output is
+    active, need the message loop and outputs respectively
 - [ ] MIR-0014 — Add documentation link validator
 - [ ] MIR-0015 — Add first integration test harness
 

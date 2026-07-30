@@ -18,11 +18,12 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use mirae_contracts::generated::EngineReadinessState;
+use mirae_contracts::generated::{EngineReadinessState, Hello, Reject, RejectReason};
 use mirae_observability::{
     ClockOrigin, EngineSessionId, Level, ProcessIdentity, ProcessRole, RetentionPolicy,
     RollingFileSink, Tracer, VolumeControl,
 };
+use mirae_runtime::ipc::{self, HandshakeOutcome};
 use mirae_runtime::{Engine, Requirement, ServiceOutcome, StubService};
 
 /// Process role reported to diagnostics and to peers.
@@ -68,6 +69,9 @@ fn main() -> ExitCode {
     run(supervised)
 }
 
+/// Environment variable carrying the launch credential from the shell.
+const CREDENTIAL_VARIABLE: &str = "MIRAE_LAUNCH_CREDENTIAL";
+
 /// Flag that makes the engine stay alive until its parent closes stdin.
 const SUPERVISED_FLAG: &str = "--supervised";
 
@@ -105,18 +109,90 @@ fn run(supervised: bool) -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    publish_readiness(&engine);
-
     if supervised {
+        // Supervised: the handshake is how readiness is reported, so stdout
+        // carries frames only. An unsupervised run still prints the line, which
+        // keeps the binary inspectable by hand.
+        // The inherited stdio pair is the transport (`108` section 3 lists an
+        // inherited secure channel). No command is served before the handshake
+        // completes, and today the handshake is the whole protocol.
+        serve_handshake(&engine);
+
         // The shell owns the lifetime: it closes stdin to request shutdown, which
         // is the cooperative half of `501` section 6 point 7. Killing the process
         // is the supervisor's fallback, not its first move.
         wait_for_parent_shutdown();
+    } else {
+        publish_readiness(&engine);
     }
 
     engine.shutdown();
 
     ExitCode::SUCCESS
+}
+
+/// Answer exactly one `Hello` on the inherited channel.
+///
+/// The credential comes from the environment variable the shell set. It is read
+/// once and removed from the environment, so it cannot reach a child process or a
+/// crash dump of this one.
+fn serve_handshake(engine: &Engine) {
+    let expected = std::env::var(CREDENTIAL_VARIABLE).unwrap_or_default();
+    // SAFETY-adjacent: removing it narrows the window in which the secret exists.
+    unsafe { std::env::remove_var(CREDENTIAL_VARIABLE) };
+
+    let Some(expected) = ipc::decode_hex(&expected) else {
+        let mut err = std::io::stderr().lock();
+        let _ = writeln!(err, "no usable launch credential; refusing connections");
+        return;
+    };
+
+    let mut input = std::io::stdin().lock();
+    let Ok((header, payload)) = ipc::read_frame(&mut input, ipc::DEFAULT_MAX_FRAME_BYTES) else {
+        // A peer that cannot frame a message gets no answer and no detail.
+        return;
+    };
+
+    if header.message_type != ipc::MessageType::Hello {
+        return;
+    }
+
+    let session = engine.readiness().engine_session_id;
+    let ready = engine.state().accepts_connections();
+
+    let (message_type, body) = match serde_json::from_slice::<Hello>(&payload) {
+        Ok(hello) => match ipc::evaluate_hello(&hello, &expected, &session, ready) {
+            HandshakeOutcome::Accepted(welcome) => (
+                ipc::MessageType::Welcome,
+                serde_json::to_vec(&welcome).unwrap_or_default(),
+            ),
+            HandshakeOutcome::Refused(reject) => (
+                ipc::MessageType::Reject,
+                serde_json::to_vec(&reject).unwrap_or_default(),
+            ),
+        },
+        Err(_) => (
+            ipc::MessageType::Reject,
+            serde_json::to_vec(&Reject {
+                reason: RejectReason::MalformedHello,
+                detail: "the hello message did not match its contract".to_owned(),
+                protocol_major: mirae_contracts::generated::PROTOCOL_VERSION_MAJOR,
+            })
+            .unwrap_or_default(),
+        ),
+    };
+
+    let response = ipc::FrameHeader {
+        protocol_major: mirae_contracts::generated::PROTOCOL_VERSION_MAJOR,
+        protocol_minor: mirae_contracts::generated::PROTOCOL_VERSION_MINOR,
+        message_type,
+        flags: 0,
+        payload_length: u32::try_from(body.len()).unwrap_or(u32::MAX),
+        correlation_id: header.correlation_id,
+    };
+
+    let mut output = std::io::stdout().lock();
+    let _ = ipc::write_frame(&mut output, &response, &body);
 }
 
 /// Block until stdin reaches end of file.
@@ -151,10 +227,9 @@ fn register_services(engine: &mut Engine) {
         "diagnostics",
         Requirement::Mandatory,
     )));
-    engine.register(Box::new(StubService::with_outcome(
+    engine.register(Box::new(StubService::ready(
         "ipc_server",
-        Requirement::Optional,
-        ServiceOutcome::Unavailable("the IPC server arrives with MIR-0012"),
+        Requirement::Mandatory,
     )));
     engine.register(Box::new(StubService::with_outcome(
         "platform_capabilities",

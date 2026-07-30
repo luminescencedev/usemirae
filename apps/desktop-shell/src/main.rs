@@ -25,16 +25,18 @@
 //! Authentication of the handoff is `MIR-0012`: the credential is created and
 //! passed, but the engine does not verify it yet.
 
-use std::io::{BufRead as _, BufReader, Write as _};
+use std::io::Write as _;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
-use std::sync::mpsc::{Receiver, channel};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use mirae_contracts::generated::EngineReadiness;
+use mirae_contracts::generated::{
+    EngineReadiness, Hello, HelloRole, PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR, Reject,
+    Welcome,
+};
+use mirae_runtime::ipc;
 use mirae_runtime::supervisor::{
     EngineLauncher, LaunchCredential, RestartPolicy, SupervisionState, Supervisor,
-    parse_readiness_line,
 };
 
 /// How long to wait for the engine to report readiness before giving up.
@@ -97,69 +99,74 @@ fn run() -> std::process::ExitCode {
     let mut supervisor = Supervisor::new(ProcessLauncher::new(engine_path), RestartPolicy::DEFAULT);
 
     if !supervisor.start(&credential, Instant::now()) {
-        report(&supervisor, None);
+        let mut err = std::io::stderr().lock();
+        let _ = writeln!(
+            err,
+            "could not launch the engine: {}",
+            supervisor.last_reason().unwrap_or("no reason given")
+        );
         return std::process::ExitCode::FAILURE;
     }
 
+    // 501 section 6 point 3: wait for *authenticated* readiness. The handshake is
+    // both: the engine answers only once it is accepting connections, and the
+    // Welcome proves this shell is allowed to talk to it.
     let deadline = Instant::now() + READINESS_TIMEOUT;
-    let mut readiness: Option<EngineReadiness> = None;
+    let mut outcome: Result<Welcome, String> = Err("the engine never answered".to_owned());
 
     while Instant::now() < deadline {
         let state = supervisor.poll(&credential, Instant::now());
-
-        if let Some(observed) = supervisor.observed_readiness() {
-            readiness = Some(observed.clone());
-            break;
-        }
 
         if matches!(state, SupervisionState::GaveUp | SupervisionState::Stopped) {
             break;
         }
 
-        std::thread::sleep(POLL_INTERVAL);
+        outcome = supervisor.launcher_mut().handshake(&credential);
+
+        match outcome {
+            Ok(_) => break,
+            // A closed channel means the engine has not opened it yet; anything
+            // else is a real refusal and must not be retried into a loop.
+            Err(ref reason) if reason.contains("frame ended early") => {
+                std::thread::sleep(POLL_INTERVAL);
+            }
+            Err(_) => break,
+        }
     }
 
-    report(&supervisor, readiness.as_ref());
-
-    // No window to keep open, so the shell stops the engine and exits rather than
-    // idling. The wait loop arrives with the UI host.
-    supervisor.stop();
-
-    if readiness.is_some() {
-        std::process::ExitCode::SUCCESS
-    } else {
-        std::process::ExitCode::FAILURE
-    }
-}
-
-/// Print what the shell observed. Never prints the credential.
-fn report(supervisor: &Supervisor<ProcessLauncher>, readiness: Option<&EngineReadiness>) {
-    let mut out = std::io::stdout().lock();
-
-    match readiness {
-        Some(readiness) => {
+    let succeeded = match outcome {
+        Ok(welcome) => {
+            let mut out = std::io::stdout().lock();
             let _ = writeln!(
                 out,
-                "engine connected: session={} protocol={}.{} launches={}",
-                readiness.engine_session_id,
-                readiness.protocol_major,
-                readiness.protocol_minor,
+                "handshake accepted: protocol={}.{} session={} max_frame={} launches={}",
+                welcome.protocol_major,
+                welcome.protocol_minor,
+                welcome.engine_session_id,
+                welcome.max_frame_bytes,
                 supervisor.launches()
             );
-
-            if let Some(detail) = readiness.detail.as_deref() {
-                let _ = writeln!(out, "engine reports an impairment: {detail}");
-            }
+            true
         }
-        None => {
+        Err(reason) => {
             let mut err = std::io::stderr().lock();
             let _ = writeln!(
                 err,
-                "engine did not report readiness: state={} reason={}",
-                supervisor.state(),
-                supervisor.last_reason().unwrap_or("none given")
+                "handshake failed: {reason} (supervision state {})",
+                supervisor.state()
             );
+            false
         }
+    };
+
+    // No window to keep open, so the shell stops the engine and exits rather than
+    // idling. The wait loop arrives with the UI host in MIR-0016.
+    supervisor.stop();
+
+    if succeeded {
+        std::process::ExitCode::SUCCESS
+    } else {
+        std::process::ExitCode::FAILURE
     }
 }
 
@@ -198,8 +205,8 @@ fn seed() -> u128 {
 struct ProcessLauncher {
     engine_path: PathBuf,
     child: Option<Child>,
-    /// Readiness lines the reader thread has parsed.
-    readiness: Option<Receiver<EngineReadiness>>,
+    /// Readiness learned from the handshake, if it has completed.
+    readiness: Option<EngineReadiness>,
 }
 
 impl ProcessLauncher {
@@ -209,6 +216,54 @@ impl ProcessLauncher {
             engine_path,
             child: None,
             readiness: None,
+        }
+    }
+
+    /// Send `Hello` over the inherited channel and read the engine's answer.
+    ///
+    /// Returns the `Welcome` on success, or a safe reason on refusal. The
+    /// credential is written into the frame and never logged.
+    fn handshake(&mut self, credential: &LaunchCredential) -> Result<Welcome, String> {
+        let child = self.child.as_mut().ok_or("the engine is not running")?;
+        let stdin = child.stdin.as_mut().ok_or("the engine channel is closed")?;
+
+        let hello = Hello {
+            role: HelloRole::Shell,
+            protocol_major_min: PROTOCOL_VERSION_MAJOR,
+            protocol_major_max: PROTOCOL_VERSION_MAJOR,
+            protocol_minor_max: PROTOCOL_VERSION_MINOR,
+            credential: ipc::encode_hex(credential.expose()),
+            build_id: concat!("mirae-shell@", env!("CARGO_PKG_VERSION")).to_owned(),
+        };
+
+        let body = serde_json::to_vec(&hello).map_err(|_| "could not encode hello".to_owned())?;
+        let header = ipc::FrameHeader {
+            protocol_major: PROTOCOL_VERSION_MAJOR,
+            protocol_minor: PROTOCOL_VERSION_MINOR,
+            message_type: ipc::MessageType::Hello,
+            flags: 0,
+            payload_length: u32::try_from(body.len()).unwrap_or(u32::MAX),
+            correlation_id: 1,
+        };
+
+        ipc::write_frame(stdin, &header, &body).map_err(|error| error.to_string())?;
+
+        let stdout = child
+            .stdout
+            .as_mut()
+            .ok_or("the engine channel is closed")?;
+        let (response, payload) = ipc::read_frame(stdout, ipc::DEFAULT_MAX_FRAME_BYTES)
+            .map_err(|error| error.to_string())?;
+
+        match response.message_type {
+            ipc::MessageType::Welcome => serde_json::from_slice::<Welcome>(&payload)
+                .map_err(|_| "the welcome did not match its contract".to_owned()),
+            ipc::MessageType::Reject => {
+                let reject = serde_json::from_slice::<Reject>(&payload)
+                    .map_err(|_| "the rejection did not match its contract".to_owned())?;
+                Err(format!("{:?}: {}", reject.reason, reject.detail))
+            }
+            ipc::MessageType::Hello => Err("the engine answered with a hello".to_owned()),
         }
     }
 }
@@ -234,28 +289,15 @@ impl EngineLauncher for ProcessLauncher {
             .stderr(Stdio::inherit())
             .spawn();
 
-        let Ok(mut child) = spawned else {
+        let Ok(child) = spawned else {
             return false;
         };
 
-        let (sender, receiver) = channel();
-
-        if let Some(stdout) = child.stdout.take() {
-            // A dedicated thread, so a silent engine cannot block the supervisor.
-            std::thread::spawn(move || {
-                for line in BufReader::new(stdout).lines().map_while(Result::ok) {
-                    if let Some(readiness) = parse_readiness_line(&line)
-                        && sender.send(readiness).is_err()
-                    {
-                        // The supervisor is gone; stop reading.
-                        break;
-                    }
-                }
-            });
-        }
-
+        // stdout stays with the child: under `--supervised` it carries protocol
+        // frames, and the handshake reads them directly. No reader thread, because
+        // nothing may consume bytes the framing needs.
         self.child = Some(child);
-        self.readiness = Some(receiver);
+        self.readiness = None;
         true
     }
 
@@ -269,10 +311,9 @@ impl EngineLauncher for ProcessLauncher {
     }
 
     fn take_readiness(&mut self) -> Option<EngineReadiness> {
-        // Empty and Disconnected both mean "nothing to report right now"; a
-        // disconnected channel is the reader thread finishing, which the running
-        // check already covers.
-        self.readiness.as_ref()?.try_recv().ok()
+        // Readiness now comes from the authenticated handshake, which the shell
+        // performs explicitly. Nothing arrives asynchronously.
+        self.readiness.take()
     }
 
     fn stop(&mut self) {

@@ -12,6 +12,7 @@ publish = false
 # processes; this crate provides the real launcher.
 mirae-contracts = { path = "../../crates/foundation/contracts" }
 mirae-runtime = { path = "../../crates/runtime/runtime" }
+serde_json = { workspace = true }
 
 [lints]
 workspace = true

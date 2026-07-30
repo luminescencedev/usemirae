@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mirae://ipc/v1/reject",
+  "title": "Reject",
+  "description": "The engine's answer to a Hello it will not accept. The reason is a stable code so a client can act on it; the detail is a safe sentence and never says which part of a credential was wrong (108 section 14).",
+  "type": "object",
+  "properties": {
+    "reason": {
+      "type": "string",
+      "enum": [
+        "unauthenticated",
+        "protocol_major_mismatch",
+        "malformed_hello",
+        "role_not_permitted",
+        "engine_not_ready"
+      ],
+      "description": "Why the connection was refused. `unauthenticated` never distinguishes a missing credential from a wrong one."
+    },
+    "detail": {
+      "type": "string",
+      "maxLength": 256,
+      "description": "A safe explanation for a person. Carries no credential material, no panic text, and no machine paths."
+    },
+    "protocolMajor": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535,
+      "description": "The major version this engine speaks, so a mismatched client can report what it needs."
+    }
+  },
+  "required": ["reason", "detail", "protocolMajor"],
+  "additionalProperties": false
+}

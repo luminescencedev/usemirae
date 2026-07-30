@@ -355,10 +355,43 @@ Canonical source: `docs/08-development/814-bootstrap-ticket-backlog.md`
   - follow-up: no layout beyond this panel; the workspace shell is the UI backlog
     in doc 09-ui-ux/928. `@testing-library/jest-dom` is not approved, so one
     matcher is defined locally in the test setup.
-- [ ] MIR-0012 — Add authenticated IPC handshake
-  - unblocked: the wire format is decided in ADR-0067 (JSON inside the bounded
-    binary frame). This ticket clears serde and serde_json through
-    DEPENDENCY_VERSIONS.md section 11 and implements the handshake.
+- [x] MIR-0012 — Add authenticated IPC handshake
+  - status: done
+  - branch: `main` (trunk-based; no pull request)
+  - dependencies: `serde 1.0.229` and `serde_json 1.0.151` cleared through
+    `DEPENDENCY_VERSIONS.md` section 11 — exact pins, committed `Cargo.lock`, a
+    new approved-Rust-dependency table with the transitive graph, and licence and
+    security review recorded there.
+  - contracts: `mirae://ipc/v1/{hello,welcome,reject}` added; the generator now
+    emits serde derives with `deny_unknown_fields`, so a schema that says
+    `additionalProperties: false` produces a decoder that agrees.
+  - framing: fixed binary header (magic, versions, message type, flags, length,
+    correlation id) then a JSON payload, per ADR-0067. The length is validated
+    against the connection limit before any allocation, which is what doc 108
+    section 9 and section 18 require.
+  - handshake: authentication is checked before anything else, so an
+    unauthenticated peer learns nothing — not even whether its protocol version
+    would have fit. A wrong credential and a missing one produce a byte-identical
+    refusal. Credentials are compared in constant time. Major mismatch, inverted
+    version range, unpermitted role, and an engine that is not ready each have
+    their own stable reason.
+  - transport: the inherited stdio pair, which doc 108 section 3 lists as a valid
+    transport. Under `--supervised` stdout carries frames only, so nothing
+    consumes bytes the framing needs.
+  - validation: `cargo xtask check` (exit 0), `cargo test --package mirae-runtime`
+    (54 tests), and a real two-process run:
+    `handshake accepted: protocol=1.0 session=... max_frame=1048576 launches=1`
+  - required tests from doc 108 section 17: handshake success, invalid credential,
+    major mismatch, minor negotiation, malformed frame, oversized frame, and
+    decode bounds are covered. Backpressure, reconnect, cancellation, and fuzzing
+    need the message loop that follows this ticket.
+  - notes: the engine's `ipc_server` service is now mandatory and real, so the
+    readiness detail names the one capability still missing rather than the IPC
+    server. The shell's readiness line was removed in supervised mode: the
+    handshake is the authenticated readiness doc 501 section 6 point 3 asks for.
+  - follow-up: only the handshake is implemented, not the message families in doc
+    108 section 7; the credential is still `LaunchCredential::placeholder`, so
+    real entropy remains outstanding and is called out in the code.
 - [ ] MIR-0013 — Add engine crash/restart smoke test
 - [ ] MIR-0014 — Add documentation link validator
 - [ ] MIR-0015 — Add first integration test harness

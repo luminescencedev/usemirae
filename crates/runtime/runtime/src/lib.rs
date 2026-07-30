@@ -20,6 +20,7 @@
 //! Services report health and never transition the engine themselves
 //! (`102` section 16).
 
+pub mod ipc;
 pub mod lifecycle;
 pub mod service;
 pub mod supervisor;

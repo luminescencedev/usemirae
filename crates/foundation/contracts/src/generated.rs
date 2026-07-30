@@ -11,7 +11,8 @@
 /// Canonical schema: `mirae://ipc/v1/engine-readiness`.
 ///
 /// See [`EngineReadinessState`].
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct EngineReadiness {
     /// Lifecycle state. `degraded` means the engine is serving requests with reduced capability and the detail field explains what is missing.
     pub state: EngineReadinessState,
@@ -30,17 +31,22 @@ pub struct EngineReadiness {
 }
 
 /// Lifecycle state. `degraded` means the engine is serving requests with reduced capability and the detail field explains what is missing.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum EngineReadinessState {
     /// The `starting` value of `state`.
+    #[serde(rename = "starting")]
     Starting,
     /// The `ready` value of `state`.
+    #[serde(rename = "ready")]
     Ready,
     /// The `degraded` value of `state`.
+    #[serde(rename = "degraded")]
     Degraded,
     /// The `stopping` value of `state`.
+    #[serde(rename = "stopping")]
     Stopping,
     /// The `stopped` value of `state`.
+    #[serde(rename = "stopped")]
     Stopped,
 }
 
@@ -64,12 +70,77 @@ pub const ENGINE_READINESS_ENGINE_SESSION_ID_MAX_LENGTH: usize = 64;
 /// Maximum accepted length of `detail`, for bounded decoding.
 pub const ENGINE_READINESS_DETAIL_MAX_LENGTH: usize = 256;
 
+/// Hello.
+///
+/// The first message a client sends. It states the process role, the protocol range it supports, and the ephemeral launch credential proving the engine's parent started it. No command is accepted before the handshake completes (108 sections 6 and 11).
+///
+/// Canonical schema: `mirae://ipc/v1/hello`.
+///
+/// See [`HelloRole`].
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Hello {
+    /// The process role claiming the connection. Authentication proves the caller launched with a credential; authorization by role is separate.
+    pub role: HelloRole,
+    /// Lowest protocol major version the client can speak.
+    pub protocol_major_min: u16,
+    /// Highest protocol major version the client can speak.
+    pub protocol_major_max: u16,
+    /// Highest minor version the client supports within its maximum major version.
+    pub protocol_minor_max: u16,
+    /// Hex-encoded ephemeral launch credential. Never logged and never included in diagnostics.
+    ///
+    /// Bounded to 128 characters by the schema.
+    pub credential: String,
+    /// Client build identity, recorded so a merged log can show mismatched builds.
+    ///
+    /// Bounded to 64 characters by the schema.
+    pub build_id: String,
+}
+
+/// The process role claiming the connection. Authentication proves the caller launched with a credential; authorization by role is separate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum HelloRole {
+    /// The `shell` value of `role`.
+    #[serde(rename = "shell")]
+    Shell,
+    /// The `control_ui` value of `role`.
+    #[serde(rename = "control_ui")]
+    ControlUi,
+    /// The `extension_host` value of `role`.
+    #[serde(rename = "extension_host")]
+    ExtensionHost,
+    /// The `test` value of `role`.
+    #[serde(rename = "test")]
+    Test,
+}
+
+impl HelloRole {
+    /// The value as written on the wire.
+    #[must_use]
+    pub const fn as_wire_str(self) -> &'static str {
+        match self {
+            Self::Shell => "shell",
+            Self::ControlUi => "control_ui",
+            Self::ExtensionHost => "extension_host",
+            Self::Test => "test",
+        }
+    }
+}
+
+/// Maximum accepted length of `credential`, for bounded decoding.
+pub const HELLO_CREDENTIAL_MAX_LENGTH: usize = 128;
+
+/// Maximum accepted length of `buildId`, for bounded decoding.
+pub const HELLO_BUILD_ID_MAX_LENGTH: usize = 64;
+
 /// Protocol version.
 ///
 /// The engine and shell protocol version. A major mismatch means an incompatible protocol and the connection is rejected; minor versions may add optional messages or fields, and the selected minor is the highest mutually supported one (108 section 8).
 ///
 /// Canonical schema: `mirae://ipc/v1/protocol-version`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProtocolVersion {
     /// Incompatible protocol generation. A peer that does not support this exact major version must be rejected.
     pub major: u16,
@@ -83,8 +154,91 @@ pub const PROTOCOL_VERSION_MAJOR: u16 = 1;
 /// The only accepted value of `minor`.
 pub const PROTOCOL_VERSION_MINOR: u16 = 0;
 
+/// Reject.
+///
+/// The engine's answer to a Hello it will not accept. The reason is a stable code so a client can act on it; the detail is a safe sentence and never says which part of a credential was wrong (108 section 14).
+///
+/// Canonical schema: `mirae://ipc/v1/reject`.
+///
+/// See [`RejectReason`].
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Reject {
+    /// Why the connection was refused. `unauthenticated` never distinguishes a missing credential from a wrong one.
+    pub reason: RejectReason,
+    /// A safe explanation for a person. Carries no credential material, no panic text, and no machine paths.
+    ///
+    /// Bounded to 256 characters by the schema.
+    pub detail: String,
+    /// The major version this engine speaks, so a mismatched client can report what it needs.
+    pub protocol_major: u16,
+}
+
+/// Why the connection was refused. `unauthenticated` never distinguishes a missing credential from a wrong one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum RejectReason {
+    /// The `unauthenticated` value of `reason`.
+    #[serde(rename = "unauthenticated")]
+    Unauthenticated,
+    /// The `protocol_major_mismatch` value of `reason`.
+    #[serde(rename = "protocol_major_mismatch")]
+    ProtocolMajorMismatch,
+    /// The `malformed_hello` value of `reason`.
+    #[serde(rename = "malformed_hello")]
+    MalformedHello,
+    /// The `role_not_permitted` value of `reason`.
+    #[serde(rename = "role_not_permitted")]
+    RoleNotPermitted,
+    /// The `engine_not_ready` value of `reason`.
+    #[serde(rename = "engine_not_ready")]
+    EngineNotReady,
+}
+
+impl RejectReason {
+    /// The value as written on the wire.
+    #[must_use]
+    pub const fn as_wire_str(self) -> &'static str {
+        match self {
+            Self::Unauthenticated => "unauthenticated",
+            Self::ProtocolMajorMismatch => "protocol_major_mismatch",
+            Self::MalformedHello => "malformed_hello",
+            Self::RoleNotPermitted => "role_not_permitted",
+            Self::EngineNotReady => "engine_not_ready",
+        }
+    }
+}
+
+/// Maximum accepted length of `detail`, for bounded decoding.
+pub const REJECT_DETAIL_MAX_LENGTH: usize = 256;
+
+/// Welcome.
+///
+/// The engine's answer to an accepted Hello. It states the selected protocol version, the engine session, and the limits this connection is bound by (108 section 6).
+///
+/// Canonical schema: `mirae://ipc/v1/welcome`.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Welcome {
+    /// Selected major version. Always the engine's own major version, since a mismatch is rejected instead.
+    pub protocol_major: u16,
+    /// Selected minor version: the highest both peers support (108 section 8.2).
+    pub protocol_minor: u16,
+    /// Identifies this engine process lifetime, so a reconnecting client can tell whether its replicated state is stale.
+    ///
+    /// Bounded to 64 characters by the schema.
+    pub engine_session_id: String,
+    /// Largest frame this connection accepts. A larger frame is rejected before it is allocated for (108 section 9).
+    pub max_frame_bytes: u32,
+}
+
+/// Maximum accepted length of `engineSessionId`, for bounded decoding.
+pub const WELCOME_ENGINE_SESSION_ID_MAX_LENGTH: usize = 64;
+
 /// Every contract id in this build, sorted.
-pub const CONTRACT_IDS: [&str; 2] = [
+pub const CONTRACT_IDS: [&str; 5] = [
     "mirae://ipc/v1/engine-readiness",
+    "mirae://ipc/v1/hello",
     "mirae://ipc/v1/protocol-version",
+    "mirae://ipc/v1/reject",
+    "mirae://ipc/v1/welcome",
 ];

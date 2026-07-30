@@ -475,7 +475,14 @@ pub(crate) fn render_rust(contracts: &[Contract]) -> String {
             }
         }
 
-        out.push_str("#[derive(Debug, Clone, PartialEq, Eq)]\n");
+        // ADR-0067: contracts cross the wire as JSON, and the schema property
+        // names are the wire names. `deny_unknown_fields` matches
+        // `"additionalProperties": false`, so a peer cannot smuggle a field past
+        // the decoder.
+        out.push_str(
+            "#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]\n",
+        );
+        out.push_str("#[serde(rename_all = \"camelCase\", deny_unknown_fields)]\n");
         out.push_str(&format!("pub struct {} {{\n", contract.type_name));
         for field in &contract.fields {
             out.push_str(&format!("    /// {}\n", field.doc));
@@ -499,13 +506,17 @@ pub(crate) fn render_rust(contracts: &[Contract]) -> String {
             if let FieldKind::Enumeration { variants } = &field.kind {
                 let enum_name = format!("{}{}", contract.type_name, pascal_case(&field.json_name));
                 out.push_str(&format!("\n/// {}\n", field.doc));
-                out.push_str("#[derive(Debug, Clone, Copy, PartialEq, Eq)]\n");
+                out.push_str(
+                    "#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]\n",
+                );
                 out.push_str(&format!("pub enum {enum_name} {{\n"));
                 for variant in variants {
                     out.push_str(&format!(
                         "    /// The `{variant}` value of `{}`.\n",
                         field.json_name
                     ));
+                    // The wire value is the schema value, not the Rust spelling.
+                    out.push_str(&format!("    #[serde(rename = \"{variant}\")]\n"));
                     out.push_str(&format!("    {},\n", pascal_case(variant)));
                 }
                 out.push_str("}\n");

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mirae://ipc/v1/hello",
+  "title": "Hello",
+  "description": "The first message a client sends. It states the process role, the protocol range it supports, and the ephemeral launch credential proving the engine's parent started it. No command is accepted before the handshake completes (108 sections 6 and 11).",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": ["shell", "control_ui", "extension_host", "test"],
+      "description": "The process role claiming the connection. Authentication proves the caller launched with a credential; authorization by role is separate."
+    },
+    "protocolMajorMin": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535,
+      "description": "Lowest protocol major version the client can speak."
+    },
+    "protocolMajorMax": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535,
+      "description": "Highest protocol major version the client can speak."
+    },
+    "protocolMinorMax": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535,
+      "description": "Highest minor version the client supports within its maximum major version."
+    },
+    "credential": {
+      "type": "string",
+      "maxLength": 128,
+      "description": "Hex-encoded ephemeral launch credential. Never logged and never included in diagnostics."
+    },
+    "buildId": {
+      "type": "string",
+      "maxLength": 64,
+      "description": "Client build identity, recorded so a merged log can show mismatched builds."
+    }
+  },
+  "required": [
+    "role",
+    "protocolMajorMin",
+    "protocolMajorMax",
+    "protocolMinorMax",
+    "credential",
+    "buildId"
+  ],
+  "additionalProperties": false
+}

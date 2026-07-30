@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mirae://ipc/v1/welcome",
+  "title": "Welcome",
+  "description": "The engine's answer to an accepted Hello. It states the selected protocol version, the engine session, and the limits this connection is bound by (108 section 6).",
+  "type": "object",
+  "properties": {
+    "protocolMajor": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535,
+      "description": "Selected major version. Always the engine's own major version, since a mismatch is rejected instead."
+    },
+    "protocolMinor": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535,
+      "description": "Selected minor version: the highest both peers support (108 section 8.2)."
+    },
+    "engineSessionId": {
+      "type": "string",
+      "maxLength": 64,
+      "description": "Identifies this engine process lifetime, so a reconnecting client can tell whether its replicated state is stale."
+    },
+    "maxFrameBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 16777216,
+      "description": "Largest frame this connection accepts. A larger frame is rejected before it is allocated for (108 section 9)."
+    }
+  },
+  "required": [
+    "protocolMajor",
+    "protocolMinor",
+    "engineSessionId",
+    "maxFrameBytes"
+  ],
+  "additionalProperties": false
+}

@@ -30,3 +30,6 @@ unimplemented = "warn"
 # Every entry uses an exact requirement (`version = "=x.y.z"`), must be justified
 # by its introducing ticket, and must be recorded in `DEPENDENCY_VERSIONS.md` §11.
 [workspace.dependencies]
+# Introduced by MIR-0012 for the control-plane wire format decided in ADR-0067.
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.151"

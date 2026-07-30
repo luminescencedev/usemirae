@@ -22,6 +22,15 @@
       "path": "schemas/ipc/v1/engine-readiness.schema.json"
     },
     {
+      "id": "mirae://ipc/v1/hello",
+      "title": "Hello",
+      "domain": "ipc",
+      "version": "v1",
+      "typeName": "Hello",
+      "fields": 6,
+      "path": "schemas/ipc/v1/hello.schema.json"
+    },
+    {
       "id": "mirae://ipc/v1/protocol-version",
       "title": "Protocol version",
       "domain": "ipc",
@@ -29,6 +38,24 @@
       "typeName": "ProtocolVersion",
       "fields": 2,
       "path": "schemas/ipc/v1/protocol-version.schema.json"
+    },
+    {
+      "id": "mirae://ipc/v1/reject",
+      "title": "Reject",
+      "domain": "ipc",
+      "version": "v1",
+      "typeName": "Reject",
+      "fields": 3,
+      "path": "schemas/ipc/v1/reject.schema.json"
+    },
+    {
+      "id": "mirae://ipc/v1/welcome",
+      "title": "Welcome",
+      "domain": "ipc",
+      "version": "v1",
+      "typeName": "Welcome",
+      "fields": 4,
+      "path": "schemas/ipc/v1/welcome.schema.json"
     }
   ]
 }

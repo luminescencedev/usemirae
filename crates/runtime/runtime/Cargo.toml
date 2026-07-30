@@ -13,6 +13,9 @@ publish = false
 mirae-contracts = { path = "../../foundation/contracts" }
 mirae-errors = { path = "../../foundation/errors" }
 mirae-observability = { path = "../../foundation/observability" }
+# ADR-0067: JSON payloads inside the bounded binary frame.
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 [lints]
 workspace = true

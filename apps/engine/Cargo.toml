@@ -11,6 +11,7 @@ publish = false
 mirae-contracts = { path = "../../crates/foundation/contracts" }
 mirae-observability = { path = "../../crates/foundation/observability" }
 mirae-runtime = { path = "../../crates/runtime/runtime" }
+serde_json = { workspace = true }
 
 [lints]
 workspace = true

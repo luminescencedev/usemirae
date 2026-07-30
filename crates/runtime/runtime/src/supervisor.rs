@@ -196,6 +196,11 @@ impl<L: EngineLauncher> Supervisor<L> {
         }
     }
 
+    /// Access the launcher, for a caller that must speak the protocol directly.
+    pub fn launcher_mut(&mut self) -> &mut L {
+        &mut self.launcher
+    }
+
     /// The supervision state.
     #[must_use]
     pub const fn state(&self) -> SupervisionState {

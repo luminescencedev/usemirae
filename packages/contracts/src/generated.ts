@@ -40,6 +40,41 @@ export const ENGINE_READINESS_ENGINE_SESSION_ID_MAX_LENGTH = 64;
 /** Maximum accepted length of `detail`, for bounded decoding. */
 export const ENGINE_READINESS_DETAIL_MAX_LENGTH = 256;
 
+/** The process role claiming the connection. Authentication proves the caller launched with a credential; authorization by role is separate. */
+export type HelloRole =
+  | "shell"
+  | "control_ui"
+  | "extension_host"
+  | "test";
+
+/**
+ * Hello.
+ *
+ * The first message a client sends. It states the process role, the protocol range it supports, and the ephemeral launch credential proving the engine's parent started it. No command is accepted before the handshake completes (108 sections 6 and 11).
+ *
+ * Canonical schema: `mirae://ipc/v1/hello`.
+ */
+export interface Hello {
+  /** The process role claiming the connection. Authentication proves the caller launched with a credential; authorization by role is separate. */
+  readonly role: HelloRole;
+  /** Lowest protocol major version the client can speak. */
+  readonly protocolMajorMin: number;
+  /** Highest protocol major version the client can speak. */
+  readonly protocolMajorMax: number;
+  /** Highest minor version the client supports within its maximum major version. */
+  readonly protocolMinorMax: number;
+  /** Hex-encoded ephemeral launch credential. Never logged and never included in diagnostics. */
+  readonly credential: string;
+  /** Client build identity, recorded so a merged log can show mismatched builds. */
+  readonly buildId: string;
+}
+
+/** Maximum accepted length of `credential`, for bounded decoding. */
+export const HELLO_CREDENTIAL_MAX_LENGTH = 128;
+
+/** Maximum accepted length of `buildId`, for bounded decoding. */
+export const HELLO_BUILD_ID_MAX_LENGTH = 64;
+
 /**
  * Protocol version.
  *
@@ -60,8 +95,59 @@ export const PROTOCOL_VERSION_MAJOR = 1;
 /** The only accepted value of `minor`. */
 export const PROTOCOL_VERSION_MINOR = 0;
 
+/** Why the connection was refused. `unauthenticated` never distinguishes a missing credential from a wrong one. */
+export type RejectReason =
+  | "unauthenticated"
+  | "protocol_major_mismatch"
+  | "malformed_hello"
+  | "role_not_permitted"
+  | "engine_not_ready";
+
+/**
+ * Reject.
+ *
+ * The engine's answer to a Hello it will not accept. The reason is a stable code so a client can act on it; the detail is a safe sentence and never says which part of a credential was wrong (108 section 14).
+ *
+ * Canonical schema: `mirae://ipc/v1/reject`.
+ */
+export interface Reject {
+  /** Why the connection was refused. `unauthenticated` never distinguishes a missing credential from a wrong one. */
+  readonly reason: RejectReason;
+  /** A safe explanation for a person. Carries no credential material, no panic text, and no machine paths. */
+  readonly detail: string;
+  /** The major version this engine speaks, so a mismatched client can report what it needs. */
+  readonly protocolMajor: number;
+}
+
+/** Maximum accepted length of `detail`, for bounded decoding. */
+export const REJECT_DETAIL_MAX_LENGTH = 256;
+
+/**
+ * Welcome.
+ *
+ * The engine's answer to an accepted Hello. It states the selected protocol version, the engine session, and the limits this connection is bound by (108 section 6).
+ *
+ * Canonical schema: `mirae://ipc/v1/welcome`.
+ */
+export interface Welcome {
+  /** Selected major version. Always the engine's own major version, since a mismatch is rejected instead. */
+  readonly protocolMajor: number;
+  /** Selected minor version: the highest both peers support (108 section 8.2). */
+  readonly protocolMinor: number;
+  /** Identifies this engine process lifetime, so a reconnecting client can tell whether its replicated state is stale. */
+  readonly engineSessionId: string;
+  /** Largest frame this connection accepts. A larger frame is rejected before it is allocated for (108 section 9). */
+  readonly maxFrameBytes: number;
+}
+
+/** Maximum accepted length of `engineSessionId`, for bounded decoding. */
+export const WELCOME_ENGINE_SESSION_ID_MAX_LENGTH = 64;
+
 /** Every contract id in this build, sorted. */
 export const CONTRACT_IDS = [
   "mirae://ipc/v1/engine-readiness",
+  "mirae://ipc/v1/hello",
   "mirae://ipc/v1/protocol-version",
+  "mirae://ipc/v1/reject",
+  "mirae://ipc/v1/welcome",
 ] as const;

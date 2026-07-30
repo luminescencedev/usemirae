@@ -298,6 +298,32 @@ When a ticket introduces a Rust crate:
 
 Claude must not invent the future renderer, IPC, async-runtime, serialization, or FFmpeg binding versions before their implementation tickets.
 
+### Approved Rust dependencies
+
+| Crate | Exact version | Introduced by | Justification |
+|---|---:|---|---|
+| `serde` | `1.0.229` | MIR-0012 | Derive-based serialization for generated contracts (ADR-0067). Features: `derive` only. |
+| `serde_json` | `1.0.151` | MIR-0012 | The control-plane payload encoding chosen in ADR-0067. |
+
+Transitive graph accepted with the above, all pinned by `Cargo.lock`:
+`serde_derive 1.0.229`, `proc-macro2 1.0.107`, `quote 1.0.47`, `syn 3.0.3`,
+`unicode-ident 1.0.24`, `itoa 1.0.18`, `memchr 2.8.3`, `ryu`.
+
+Licence review: every crate above is dual-licensed MIT or Apache-2.0, which is
+compatible with a proprietary desktop application and requires only attribution in
+the distributed notices file.
+
+Security review: `serde` and `serde_json` are the de facto standard in the Rust
+ecosystem, are widely audited, and contain no `unsafe` in the paths this project
+uses. `serde_json` parses untrusted input, so callers must bound the input before
+parsing; the frame header in `01-runtime/108-ipc-protocol.md` section 4 does that,
+and `crates/runtime/runtime/src/ipc.rs` rejects an oversized frame before
+allocating. Deserialization executes no schema-supplied code, which is one of the
+criteria ADR-0067 was chosen against.
+
+Not yet approved, and each needs its own ticket: `wry` and `tao` for the desktop
+window (ADR-0068), and any renderer, async-runtime, or FFmpeg binding.
+
 ---
 
 ## 12. Suggested package ownership

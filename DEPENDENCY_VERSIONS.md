@@ -306,10 +306,28 @@ Claude must not invent the future renderer, IPC, async-runtime, serialization, o
 | `serde_json` | `1.0.151` | MIR-0012 | The control-plane payload encoding chosen in ADR-0067. |
 | `tao` | `0.35.3` | MIR-0016 | The window and event loop for the desktop shell (ADR-0068). Features: `rwh_06` plus `x11` through `wry`; defaults off. |
 | `wry` | `0.55.1` | MIR-0016 | Bindings to the operating system's own webview — WebView2, WKWebView, WebKitGTK — for the control UI (ADR-0068). Features: `protocol`, `os-webview`, `x11`; defaults off. |
+| `uuid` | `1.24.0` | MIR-0101 | The persisted entity identifier (ADR-0069). Features: `std`, `v4`, `serde`; defaults off. |
 
 Transitive graph accepted with `serde` and `serde_json`, all pinned by
 `Cargo.lock`: `serde_derive 1.0.229`, `proc-macro2 1.0.107`, `quote 1.0.47`,
 `syn 3.0.3`, `unicode-ident 1.0.24`, `itoa 1.0.18`, `memchr 2.8.3`, `ryu`.
+
+Transitive graph accepted with `uuid`, all pinned by `Cargo.lock`:
+`getrandom 0.4.3`, `cfg-if 1.0.4`, and per platform `libc 0.2.189` (Unix),
+`r-efi 6.0.0` (UEFI target, never built here), `wasi 0.11.1` (WebAssembly target,
+never built here).
+
+Licence review for `uuid`: `uuid` and `getrandom` are `MIT OR Apache-2.0`, as are
+`cfg-if` and `libc`. `r-efi` offers `MIT OR Apache-2.0` beside LGPL and is
+selected only for a UEFI target Mirae does not build.
+
+Security review for `uuid`: identifiers are minted with `v4`, so the property
+that matters is that `getrandom` reaches the operating system's own generator —
+`BCryptGenRandom`, `getrandom(2)`, `getentropy` — rather than a userspace PRNG
+seeded once. Default features are off, so no clock, hashing, or formatting
+backend is compiled in. Parsing runs on untrusted input from a project file; it
+is bounded by construction, and `IdParseError` carries no part of the input, so a
+malformed identifier cannot travel into a log.
 
 `wry` and `tao` bring a much larger graph, which ADR-0068 anticipated and which is
 reviewed below rather than enumerated crate by crate.

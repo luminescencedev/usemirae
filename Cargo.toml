@@ -35,6 +35,16 @@ unimplemented = "warn"
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.151"
 
+# Introduced by MIR-0101 for the persisted entity identifier decided in
+# ADR-0069. `v4` is the random generator; `serde` gives the canonical
+# hyphenated text form in project files. Default features are off so no
+# formatting, hashing, or clock backend is compiled in that nothing uses.
+uuid = { version = "=1.24.0", default-features = false, features = [
+    "std",
+    "v4",
+    "serde",
+] }
+
 # Introduced by MIR-0016 for the desktop window and system webview decided in
 # ADR-0068. `wry` binds the operating system's own webview and `tao` owns the
 # window and the event loop; neither bundles a browser engine. Default features

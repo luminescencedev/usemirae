@@ -259,3 +259,4 @@
 - [ADR-0066: Engine State and UI Drafts Remain Separate](adr/ADR-0066-engine-state-and-ui-drafts-remain-separate.md)
 - [ADR-0067: JSON Control-Plane Serialization](adr/ADR-0067-json-control-plane-serialization.md)
 - [ADR-0068: System Webview for the Desktop Shell](adr/ADR-0068-system-webview-desktop-shell.md)
+- [ADR-0069: Random UUIDs as the Persisted Entity Identifier](adr/ADR-0069-entity-identifier-representation.md)
